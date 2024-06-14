@@ -1,0 +1,285 @@
+---
+title: "Personalization"
+output: html_notebook
+---
+
+```{r library}
+library(tidyverse)
+library(jsonlite)
+library(httr)
+
+
+```
+
+
+```{r management}
+
+
+# Read the CSV file with the appropriate delimiter
+column_names <- names(read.csv("personalization_pretest_June 6, 2024_13.25.csv", nrows = 1))
+
+df <- read.csv("personalization_pretest_June 6, 2024_21.29.csv", sep=",", skip = 79, header = FALSE)
+
+names(df) <- column_names
+
+# Extract relevant columns
+ratings_columns <- grep("^Rating", colnames(df), value = TRUE)
+statement_columns <- grep("^statementText", colnames(df), value = TRUE)
+prolific_id_column <- "porlific"
+
+# Function to parse JSON ratings
+parse_ratings <- function(rating_str) {
+  if (is.na(rating_str) || rating_str == "") return(NULL)
+  rating <- tryCatch(fromJSON(gsub('""', '"', gsub('""', '"', rating_str))), error = function(e) NULL)
+  return(rating)
+}
+
+
+# Flatten the ratings columns
+ratings_data <- df %>%
+  select(all_of(ratings_columns)) %>%
+  mutate(across(everything(), ~ map(.x, parse_ratings)))
+
+# Convert to long format
+long_format_data <- list()
+
+for (i in 1:nrow(df)) {
+  prolific_id <- df[i, prolific_id_column]
+  for (j in 1:length(statement_columns)) {
+    statement_text <- df[i, statement_columns[j]]
+    rating <- ratings_data[[ratings_columns[j]]][[i]]
+    if (!is.null(rating)) {
+      long_format_data[[length(long_format_data) + 1]] <- tibble(
+        statementText = statement_text,
+        ProlificID = prolific_id,
+        positive_rating = as.numeric(rating$positive),
+        negative_rating = as.numeric(rating$negative),
+        regret_rating = as.numeric(rating$regret),
+        agreement_rating = as.numeric(rating$agreement)
+      )
+    }
+  }
+}
+
+# Combine the list of tibbles into a single dataframe
+long_format_df <- bind_rows(long_format_data)
+
+additional_columns <- c("Educational.Level", "DemRep_C", "Ideology_econ", "Ideology_social", "AttentionCheck2", "climate1", "climate2")
+
+additional_info_df <- df %>%
+  select(all_of(prolific_id_column), all_of(additional_columns)) %>%
+  distinct() %>%
+  rename(ProlificID = all_of(prolific_id_column))
+
+# Merge based on ProlificID
+final_df <- long_format_df %>%
+  left_join(additional_info_df, by = "ProlificID")
+
+
+
+# URL of the JSON file on GitHub
+json_url <- "https://raw.githubusercontent.com/bencebago/news_personalization/main/filtered_relevant_articles_science.json"
+
+json_data <- fromJSON(content(GET(json_url), "text", encoding = "UTF-8"))
+
+# Function to find the entry containing the statement
+find_column <- function(statement, df) {
+  for (col_name in colnames(df)) {
+    entry <- df[[col_name]]
+    if (statement %in% entry) {
+      return(col_name)
+    }
+  }
+  return(NA)
+}
+
+find_row <- function(statement, df) {
+  for (i in seq_len(nrow(df))) {
+    if (statement %in% df[i, ]) {
+      return(i)
+    }
+  }
+  return(NA)
+}
+
+
+# Apply the function to each statementText in the long_format_df
+final_df <- final_df %>%
+  mutate(entry_name = map_chr(statementText, ~ find_column(.x, json_data)),
+         item_nr =  map_int(statementText, ~ find_row(.x, json_data)))
+
+
+
+##group by and summarize by item_nr and entry name
+byItem <- final_df %>%
+  mutate(regret_rating = regret_rating * -1) %>%
+  filter(climate2 == "Caused mostly by natural changes in the environment" | 
+         climate2 == "None of the above because global warming isn’t happening") %>%
+  group_by(item_nr, entry_name, climate2) %>%
+  summarize(mean_regret = mean(regret_rating, na.rm = TRUE),
+            mean_agreement = mean(agreement_rating, na.rm = TRUE),
+            mean_positive = mean(positive_rating, na.rm = TRUE),
+            mean_negative = mean(negative_rating, na.rm = TRUE),
+            .groups = 'drop')
+
+wide_data <- byItem %>%
+  pivot_wider(names_from = entry_name, 
+              values_from = c(mean_regret, mean_agreement, mean_positive, mean_negative),
+              names_sep = "_",
+              id_cols = c(item_nr, climate2))
+
+# Calculate the differences
+diff_data <- wide_data %>%
+  mutate(OriginDenier_regret_distance = mean_regret_title - mean_regret_selected_title_OriginDenier,
+         OriginDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_OriginDenier,
+         OriginDenier_positive_distance = mean_positive_title - mean_positive_selected_title_OriginDenier,
+         OriginDenier_negative_distance = mean_negative_title - mean_negative_selected_title_OriginDenier,
+         AbsoluteDenier_regret_distance = mean_regret_title - mean_regret_selected_title_AbsoluteDenier,
+         AbsoluteDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_AbsoluteDenier,
+         AbsoluteDenier_positive_distance = mean_positive_title - mean_positive_selected_title_AbsoluteDenier,
+         AbsoluteDenier_negative_distance = mean_negative_title - mean_negative_selected_title_AbsoluteDenier)
+
+# Count the number of negative values for each distance category
+count_negatives <- diff_data %>%
+  mutate(OriginDenier_neg_count = rowSums(select(., starts_with("OriginDenier")) < 0, na.rm = TRUE),
+         AbsoluteDenier_neg_count = rowSums(select(., starts_with("AbsoluteDenier")) < 0, na.rm = TRUE))
+
+negative_counts <- diff_data %>%
+  group_by(climate2) %>%
+  summarise(across(starts_with("OriginDenier"), ~ sum(. < 0, na.rm = TRUE), .names = "neg_{.col}"),
+            across(starts_with("AbsoluteDenier"), ~ sum(. < 0, na.rm = TRUE), .names = "neg_{.col}"))
+
+# Categorize the counts into specified categories
+categorized_counts <- count_negatives %>%
+  mutate(OriginDenier_category = case_when(
+           OriginDenier_neg_count == 4 ~ "all 4 negative",
+           OriginDenier_neg_count == 3 ~ "3 negative",
+           OriginDenier_neg_count == 2 ~ "2 negative",
+           OriginDenier_neg_count == 1 ~ "1 negative",
+           OriginDenier_neg_count == 0 ~ "no negative"
+         ),
+         AbsoluteDenier_category = case_when(
+           AbsoluteDenier_neg_count == 4 ~ "all 4 negative",
+           AbsoluteDenier_neg_count == 3 ~ "3 negative",
+           AbsoluteDenier_neg_count == 2 ~ "2 negative",
+           AbsoluteDenier_neg_count == 1 ~ "1 negative",
+           AbsoluteDenier_neg_count == 0 ~ "no negative"
+         ))
+
+# Summarize the counts by category and climate2
+summary_counts <- categorized_counts %>%
+  group_by(climate2) %>%
+  summarize(OriginDenier_all_4_negative = sum(OriginDenier_category == "all 4 negative"),
+            OriginDenier_3_negative = sum(OriginDenier_category == "3 negative"),
+            OriginDenier_2_negative = sum(OriginDenier_category == "2 negative"),
+            OriginDenier_1_negative = sum(OriginDenier_category == "1 negative"),
+            OriginDenier_no_negative = sum(OriginDenier_category == "no negative"),
+            AbsoluteDenier_all_4_negative = sum(AbsoluteDenier_category == "all 4 negative"),
+            AbsoluteDenier_3_negative = sum(AbsoluteDenier_category == "3 negative"),
+            AbsoluteDenier_2_negative = sum(AbsoluteDenier_category == "2 negative"),
+            AbsoluteDenier_1_negative = sum(AbsoluteDenier_category == "1 negative"),
+            AbsoluteDenier_no_negative = sum(AbsoluteDenier_category == "no negative"))
+
+
+##
+
+
+```
+
+
+```{r correlations}
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+
+final_df <- final_df %>%
+  mutate(regret_rating = regret_rating * -1)
+
+# Function to calculate correlation matrix
+calc_correlations <- function(data) {
+  data <- data %>% select(agreement_rating, regret_rating)
+  numeric_data <- data %>% mutate(across(everything(), as.numeric))
+  cor_matrix <- cor(numeric_data, use = "complete.obs")
+  return(cor_matrix)
+}
+
+# Filter, group by climate2, and calculate correlations
+correlation_tables <- final_df %>%
+  filter(climate2 %in% c("Caused mostly by natural changes in the environment", 
+                         "None of the above because global warming isn’t happening")) %>%
+  group_by(climate2, entry_name) %>%
+  summarise(cor_matrix = list(calc_correlations(cur_data())),
+            .groups = 'drop')
+
+# Convert list column to separate data frames for each climate2
+correlation_tables_list <- correlation_tables %>%
+  mutate(cor_matrix = map(cor_matrix, ~ as.data.frame(as.table(.)))) %>%
+  unnest(cor_matrix)
+
+correlation_tables_list <- correlation_tables_list %>%
+  filter(as.character(Var1) < as.character(Var2))
+
+# Display the correlation tables
+print(correlation_tables_list)
+
+cor(count_negatives$OriginDenier_agreement_distance, count_negatives$OriginDenier_regret_distance)
+cor(count_negatives$AbsoluteDenier_agreement_distance, count_negatives$AbsoluteDenier_regret_distance)
+
+count_negatives$regret_or_agreement_Absolute = ifelse(count_negatives$AbsoluteDenier_regret_distance < 0 | count_negatives$AbsoluteDenier_agreement_distance < 0, 1,0)
+count_negatives$regret_or_agreement_Origin = ifelse(count_negatives$OriginDenier_regret_distance < 0 | count_negatives$OriginDenier_agreement_distance < 0, 1,0)
+
+sum(count_negatives[count_negatives$climate2=="Caused mostly by natural changes in the environment",]$regret_or_agreement_Absolute)
+sum(count_negatives[count_negatives$climate2=="None of the above because global warming isn’t happening",]$regret_or_agreement_Absolute)
+
+sum(count_negatives[count_negatives$climate2=="Caused mostly by natural changes in the environment",]$regret_or_agreement_Origin)
+sum(count_negatives[count_negatives$climate2=="None of the above because global warming isn’t happening",]$regret_or_agreement_Origin)
+
+```
+
+
+```{r regression}
+
+library(dplyr)
+
+
+# Calculate variances for each rating type grouped by item_nr
+item_variances <- final_df %>%
+  group_by(item_nr) %>%
+  summarise(variance_regret = var(regret_rating, na.rm = TRUE),
+            variance_agreement = var(agreement_rating, na.rm = TRUE),
+            variance_positive = var(positive_rating, na.rm = TRUE),
+            variance_negative = var(negative_rating, na.rm = TRUE),
+            .groups = 'drop')
+
+# Summarize the variances to understand heterogeneity
+summary_variances <- item_variances %>%
+  summarise(mean_variance_regret = mean(variance_regret, na.rm = TRUE),
+            mean_variance_agreement = mean(variance_agreement, na.rm = TRUE),
+            mean_variance_positive = mean(variance_positive, na.rm = TRUE),
+            mean_variance_negative = mean(variance_negative, na.rm = TRUE),
+            sd_variance_regret = sd(variance_regret, na.rm = TRUE),
+            sd_variance_agreement = sd(variance_agreement, na.rm = TRUE),
+            sd_variance_positive = sd(variance_positive, na.rm = TRUE),
+            sd_variance_negative = sd(variance_negative, na.rm = TRUE))
+
+# Display the summary of variances
+print(summary_variances)
+
+# Optionally, plot the variances to visualize heterogeneity
+library(ggplot2)
+
+# Convert to long format for plotting
+item_variances_long <- item_variances %>%
+  pivot_longer(cols = starts_with("variance"), names_to = "rating_type", values_to = "variance")
+
+# Plot variances for each rating type
+ggplot(item_variances_long, aes(x = rating_type, y = variance)) +
+  geom_boxplot() +
+  labs(title = "Variances of Rating Types by Item",
+       x = "Rating Type",
+       y = "Variance") +
+  theme_minimal()
+
+
+```
