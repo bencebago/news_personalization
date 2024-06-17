@@ -194,7 +194,8 @@ library(tidyr)
 library(purrr)
 
 final_df <- final_df %>%
-  mutate(regret_rating = regret_rating * -1)
+  mutate(regret_rating = regret_rating * -1,
+         positive_rating = positive_rating * -1)
 
 # Function to calculate correlation matrix
 calc_correlations <- function(data) {
@@ -237,49 +238,168 @@ sum(count_negatives[count_negatives$climate2=="None of the above because global 
 
 ```
 
+```{r figures}
 
-```{r regression}
+library(ggplot2)
+
+figuredata = final_df %>%
+  mutate(entry_name = factor(entry_name, labels = c('AbsoluteDenier', 'OriginDenier', 'Original')))
+
+summary_data <- figuredata %>%
+  group_by(entry_name) %>%
+  summarize(
+    mean_agreement = mean(agreement_rating, na.rm = TRUE),
+    se_agreement = sd(agreement_rating, na.rm = TRUE) / sqrt(n())
+  )
+
+
+ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
+  labs(x = "Headline type", y = "Anticipated agreement", title = "Mean Agreement Rating by Headline Type with Standard Errors") +
+  theme_minimal()
+
+
+#regret
+summary_data <- figuredata %>%
+  group_by(entry_name) %>%
+  summarize(
+    mean_agreement = mean(regret_rating, na.rm = TRUE),
+    se_agreement = sd(regret_rating, na.rm = TRUE) / sqrt(n())
+  )
+
+
+ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
+  labs(x = "Headline type", y = "Anticipated regret", title = "Mean Regret Rating by Headline Type with Standard Errors") +
+  theme_minimal()
+
+
+#positive emotions
+summary_data <- figuredata %>%
+  group_by(entry_name) %>%
+  summarize(
+    mean_agreement = mean(positive_rating, na.rm = TRUE),
+    se_agreement = sd(positive_rating, na.rm = TRUE) / sqrt(n())
+  )
+
+
+ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
+  labs(x = "Headline type", y = "Positive emotions", title = "Mean Positive Emotions Rating by Headline Type with Standard Errors") +
+  theme_minimal()
+
+
+
+#negative emotions
+summary_data <- figuredata %>%
+  group_by(entry_name) %>%
+  summarize(
+    mean_agreement = mean(negative_rating, na.rm = TRUE),
+    se_agreement = sd(negative_rating, na.rm = TRUE) / sqrt(n())
+  )
+
+
+ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
+  labs(x = "Headline type", y = "Negative emotions", title = "Mean Negative Emotions Rating by Headline Type with Standard Errors") +
+  theme_minimal()
+
+
+
+```
+
+```{r headline selection}
 
 library(dplyr)
 
 
-# Calculate variances for each rating type grouped by item_nr
-item_variances <- final_df %>%
-  group_by(item_nr) %>%
-  summarise(variance_regret = var(regret_rating, na.rm = TRUE),
-            variance_agreement = var(agreement_rating, na.rm = TRUE),
-            variance_positive = var(positive_rating, na.rm = TRUE),
-            variance_negative = var(negative_rating, na.rm = TRUE),
+byItem <- final_df %>%
+  mutate(regret_rating = regret_rating * -1) %>%
+  filter(climate2 == "Caused mostly by natural changes in the environment" | 
+         climate2 == "None of the above because global warming isn’t happening") %>%
+  group_by(item_nr, entry_name) %>%
+  summarize(mean_regret = mean(regret_rating, na.rm = TRUE),
+            mean_agreement = mean(agreement_rating, na.rm = TRUE),
+            mean_positive = mean(positive_rating, na.rm = TRUE),
+            mean_negative = mean(negative_rating, na.rm = TRUE)*-1,
             .groups = 'drop')
 
-# Summarize the variances to understand heterogeneity
-summary_variances <- item_variances %>%
-  summarise(mean_variance_regret = mean(variance_regret, na.rm = TRUE),
-            mean_variance_agreement = mean(variance_agreement, na.rm = TRUE),
-            mean_variance_positive = mean(variance_positive, na.rm = TRUE),
-            mean_variance_negative = mean(variance_negative, na.rm = TRUE),
-            sd_variance_regret = sd(variance_regret, na.rm = TRUE),
-            sd_variance_agreement = sd(variance_agreement, na.rm = TRUE),
-            sd_variance_positive = sd(variance_positive, na.rm = TRUE),
-            sd_variance_negative = sd(variance_negative, na.rm = TRUE))
+wide_data <- byItem %>%
+  pivot_wider(names_from = entry_name, 
+              values_from = c(mean_regret, mean_agreement, mean_positive, mean_negative),
+              names_sep = "_",
+              id_cols = c(item_nr))%>%
+  mutate(original = mean_regret_title + mean_agreement_title + mean_positive_title + mean_negative_title,
+         AbsoluteDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
+         OriginDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
+         absolutedenier_works = ifelse(AbsoluteDenier > original, 1,0))
 
-# Display the summary of variances
-print(summary_variances)
+sum(wide_data$absolutedenier_works)
 
-# Optionally, plot the variances to visualize heterogeneity
-library(ggplot2)
 
-# Convert to long format for plotting
-item_variances_long <- item_variances %>%
-  pivot_longer(cols = starts_with("variance"), names_to = "rating_type", values_to = "variance")
 
-# Plot variances for each rating type
-ggplot(item_variances_long, aes(x = rating_type, y = variance)) +
-  geom_boxplot() +
-  labs(title = "Variances of Rating Types by Item",
-       x = "Rating Type",
-       y = "Variance") +
-  theme_minimal()
+
+diff_data <- wide_data %>%
+  mutate(OriginDenier_regret_distance = mean_regret_title - mean_regret_selected_title_OriginDenier,
+         OriginDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_OriginDenier,
+         OriginDenier_positive_distance = mean_positive_title - mean_positive_selected_title_OriginDenier,
+         OriginDenier_negative_distance = mean_negative_title - mean_negative_selected_title_OriginDenier,
+         AbsoluteDenier_regret_distance = mean_regret_title - mean_regret_selected_title_AbsoluteDenier,
+         AbsoluteDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_AbsoluteDenier,
+         AbsoluteDenier_positive_distance = mean_positive_title - mean_positive_selected_title_AbsoluteDenier,
+         AbsoluteDenier_negative_distance = mean_negative_title - mean_negative_selected_title_AbsoluteDenier,
+         agreement_absolute= ifelse(AbsoluteDenier_agreement_distance < 0,1,0))
+         
+sum(diff_data$agreement_absolute)
+#save the item_nrs
+
+
 
 
 ```
+
+```{r regression}
+library(lmerTest)
+
+final_df = final_df %>%
+  mutate(absoluteheadline = ifelse(entry_name =='selected_title_AbsoluteDenier',1,0),
+         originheadline = ifelse(entry_name =='selected_title_OriginDenier',1,0))%>%
+  filter(climate2 == "Caused mostly by natural changes in the environment" | 
+         climate2 == "None of the above because global warming isn’t happening")
+
+model1 = lmer(agreement_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+model1 = lmer(regret_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+
+model1 = lmer(positive_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+
+model1 = lmer(negative_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+
+
+####originheadlines
+model1 = lmer(agreement_rating ~ originheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_AbsoluteDenier',], na.action=na.omit)
+summary(model1)
+
+model1 = lmer(regret_rating ~ originheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_AbsoluteDenier',], na.action=na.omit)
+summary(model1)
+
+
+model1 = lmer(positive_rating ~ originheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_AbsoluteDenier',], na.action=na.omit)
+summary(model1)
+
+
+model1 = lmer(negative_rating ~ originheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_AbsoluteDenier',], na.action=na.omit)
+summary(model1)
+```
+
