@@ -110,82 +110,8 @@ final_df <- final_df %>%
 
 
 
-##group by and summarize by item_nr and entry name
-byItem <- final_df %>%
-  mutate(regret_rating = regret_rating * -1) %>%
-  filter(climate2 == "Caused mostly by natural changes in the environment" | 
-         climate2 == "None of the above because global warming isn’t happening") %>%
-  group_by(item_nr, entry_name, climate2) %>%
-  summarize(mean_regret = mean(regret_rating, na.rm = TRUE),
-            mean_agreement = mean(agreement_rating, na.rm = TRUE),
-            mean_positive = mean(positive_rating, na.rm = TRUE),
-            mean_negative = mean(negative_rating, na.rm = TRUE),
-            .groups = 'drop')
-
-wide_data <- byItem %>%
-  pivot_wider(names_from = entry_name, 
-              values_from = c(mean_regret, mean_agreement, mean_positive, mean_negative),
-              names_sep = "_",
-              id_cols = c(item_nr, climate2))
-
-# Calculate the differences
-diff_data <- wide_data %>%
-  mutate(OriginDenier_regret_distance = mean_regret_title - mean_regret_selected_title_OriginDenier,
-         OriginDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_OriginDenier,
-         OriginDenier_positive_distance = mean_positive_title - mean_positive_selected_title_OriginDenier,
-         OriginDenier_negative_distance = mean_negative_title - mean_negative_selected_title_OriginDenier,
-         AbsoluteDenier_regret_distance = mean_regret_title - mean_regret_selected_title_AbsoluteDenier,
-         AbsoluteDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_AbsoluteDenier,
-         AbsoluteDenier_positive_distance = mean_positive_title - mean_positive_selected_title_AbsoluteDenier,
-         AbsoluteDenier_negative_distance = mean_negative_title - mean_negative_selected_title_AbsoluteDenier)
-
-# Count the number of negative values for each distance category
-count_negatives <- diff_data %>%
-  mutate(OriginDenier_neg_count = rowSums(select(., starts_with("OriginDenier")) < 0, na.rm = TRUE),
-         AbsoluteDenier_neg_count = rowSums(select(., starts_with("AbsoluteDenier")) < 0, na.rm = TRUE))
-
-negative_counts <- diff_data %>%
-  group_by(climate2) %>%
-  summarise(across(starts_with("OriginDenier"), ~ sum(. < 0, na.rm = TRUE), .names = "neg_{.col}"),
-            across(starts_with("AbsoluteDenier"), ~ sum(. < 0, na.rm = TRUE), .names = "neg_{.col}"))
-
-# Categorize the counts into specified categories
-categorized_counts <- count_negatives %>%
-  mutate(OriginDenier_category = case_when(
-           OriginDenier_neg_count == 4 ~ "all 4 negative",
-           OriginDenier_neg_count == 3 ~ "3 negative",
-           OriginDenier_neg_count == 2 ~ "2 negative",
-           OriginDenier_neg_count == 1 ~ "1 negative",
-           OriginDenier_neg_count == 0 ~ "no negative"
-         ),
-         AbsoluteDenier_category = case_when(
-           AbsoluteDenier_neg_count == 4 ~ "all 4 negative",
-           AbsoluteDenier_neg_count == 3 ~ "3 negative",
-           AbsoluteDenier_neg_count == 2 ~ "2 negative",
-           AbsoluteDenier_neg_count == 1 ~ "1 negative",
-           AbsoluteDenier_neg_count == 0 ~ "no negative"
-         ))
-
-# Summarize the counts by category and climate2
-summary_counts <- categorized_counts %>%
-  group_by(climate2) %>%
-  summarize(OriginDenier_all_4_negative = sum(OriginDenier_category == "all 4 negative"),
-            OriginDenier_3_negative = sum(OriginDenier_category == "3 negative"),
-            OriginDenier_2_negative = sum(OriginDenier_category == "2 negative"),
-            OriginDenier_1_negative = sum(OriginDenier_category == "1 negative"),
-            OriginDenier_no_negative = sum(OriginDenier_category == "no negative"),
-            AbsoluteDenier_all_4_negative = sum(AbsoluteDenier_category == "all 4 negative"),
-            AbsoluteDenier_3_negative = sum(AbsoluteDenier_category == "3 negative"),
-            AbsoluteDenier_2_negative = sum(AbsoluteDenier_category == "2 negative"),
-            AbsoluteDenier_1_negative = sum(AbsoluteDenier_category == "1 negative"),
-            AbsoluteDenier_no_negative = sum(AbsoluteDenier_category == "no negative"))
-
-
-##
-
 
 ```
-
 
 ```{r correlations}
 
@@ -239,6 +165,10 @@ sum(count_negatives[count_negatives$climate2=="None of the above because global 
 ```
 
 ```{r figures}
+
+####need to exclude items which failed pretest and need to exclude items that failed fact-checking
+
+
 
 library(ggplot2)
 
@@ -312,56 +242,6 @@ ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
 
 ```
 
-```{r headline selection}
-
-library(dplyr)
-
-
-byItem <- final_df %>%
-  mutate(regret_rating = regret_rating * -1) %>%
-  filter(climate2 == "Caused mostly by natural changes in the environment" | 
-         climate2 == "None of the above because global warming isn’t happening") %>%
-  group_by(item_nr, entry_name) %>%
-  summarize(mean_regret = mean(regret_rating, na.rm = TRUE),
-            mean_agreement = mean(agreement_rating, na.rm = TRUE),
-            mean_positive = mean(positive_rating, na.rm = TRUE),
-            mean_negative = mean(negative_rating, na.rm = TRUE)*-1,
-            .groups = 'drop')
-
-wide_data <- byItem %>%
-  pivot_wider(names_from = entry_name, 
-              values_from = c(mean_regret, mean_agreement, mean_positive, mean_negative),
-              names_sep = "_",
-              id_cols = c(item_nr))%>%
-  mutate(original = mean_regret_title + mean_agreement_title + mean_positive_title + mean_negative_title,
-         AbsoluteDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
-         OriginDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
-         absolutedenier_works = ifelse(AbsoluteDenier > original, 1,0))
-
-sum(wide_data$absolutedenier_works)
-
-
-
-
-diff_data <- wide_data %>%
-  mutate(OriginDenier_regret_distance = mean_regret_title - mean_regret_selected_title_OriginDenier,
-         OriginDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_OriginDenier,
-         OriginDenier_positive_distance = mean_positive_title - mean_positive_selected_title_OriginDenier,
-         OriginDenier_negative_distance = mean_negative_title - mean_negative_selected_title_OriginDenier,
-         AbsoluteDenier_regret_distance = mean_regret_title - mean_regret_selected_title_AbsoluteDenier,
-         AbsoluteDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_AbsoluteDenier,
-         AbsoluteDenier_positive_distance = mean_positive_title - mean_positive_selected_title_AbsoluteDenier,
-         AbsoluteDenier_negative_distance = mean_negative_title - mean_negative_selected_title_AbsoluteDenier,
-         agreement_absolute= ifelse(AbsoluteDenier_agreement_distance < 0,1,0))
-         
-sum(diff_data$agreement_absolute)
-#save the item_nrs
-
-
-
-
-```
-
 ```{r regression}
 library(lmerTest)
 
@@ -403,3 +283,131 @@ model1 = lmer(negative_rating ~ originheadline + (1|ProlificID) + (1|item_nr), d
 summary(model1)
 ```
 
+
+```{r item selection based on manipulation check}
+
+library(dplyr)
+
+
+byItem <- final_df %>%
+  mutate(regret_rating = regret_rating * -1) %>%
+  filter(climate2 == "Caused mostly by natural changes in the environment" | 
+         climate2 == "None of the above because global warming isn’t happening") %>%
+  group_by(item_nr, entry_name) %>%
+  summarize(mean_regret = mean(regret_rating, na.rm = TRUE),
+            mean_agreement = mean(agreement_rating, na.rm = TRUE),
+            mean_positive = mean(positive_rating, na.rm = TRUE),
+            mean_negative = mean(negative_rating, na.rm = TRUE)*-1,
+            .groups = 'drop')
+
+wide_data <- byItem %>%
+  pivot_wider(names_from = entry_name, 
+              values_from = c(mean_regret, mean_agreement, mean_positive, mean_negative),
+              names_sep = "_",
+              id_cols = c(item_nr))%>%
+  mutate(original = mean_regret_title + mean_agreement_title + mean_positive_title + mean_negative_title,
+         AbsoluteDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
+         OriginDenier = mean_regret_selected_title_AbsoluteDenier + mean_agreement_selected_title_AbsoluteDenier + mean_negative_selected_title_AbsoluteDenier + mean_positive_selected_title_AbsoluteDenier,
+         absolutedenier_works = ifelse(AbsoluteDenier > original, 1,0))
+
+sum(wide_data$absolutedenier_works)
+#save item_nr of items to a vector in which absolutedenier_works is 1. 
+
+items_absolutedenier_works <- wide_data %>%
+  filter(absolutedenier_works == 1) %>%
+  pull(item_nr)
+
+
+
+diff_data <- wide_data %>%
+  mutate(OriginDenier_regret_distance = mean_regret_title - mean_regret_selected_title_OriginDenier,
+         OriginDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_OriginDenier,
+         OriginDenier_positive_distance = mean_positive_title - mean_positive_selected_title_OriginDenier,
+         OriginDenier_negative_distance = mean_negative_title - mean_negative_selected_title_OriginDenier,
+         AbsoluteDenier_regret_distance = mean_regret_title - mean_regret_selected_title_AbsoluteDenier,
+         AbsoluteDenier_agreement_distance = mean_agreement_title - mean_agreement_selected_title_AbsoluteDenier,
+         AbsoluteDenier_positive_distance = mean_positive_title - mean_positive_selected_title_AbsoluteDenier,
+         AbsoluteDenier_negative_distance = mean_negative_title - mean_negative_selected_title_AbsoluteDenier,
+         agreement_absolute= ifelse(AbsoluteDenier_agreement_distance < 0,1,0))
+         
+sum(diff_data$agreement_absolute)
+#save the item_nrs
+
+
+
+
+```
+
+```{r item selection based on fact-check}
+
+library(readxl)
+
+# Load the final_df and response_factchecker dataframes
+response_factchecker <- read_excel("response_factcheck.xlsx")
+
+# Ensure the relevant columns are character type for accurate merging
+final_df <- final_df %>%
+  mutate(statementText = as.character(statementText))
+
+response_factchecker <- response_factchecker %>%
+  mutate(title = as.character(title))
+
+# Merge the dataframes based on the corresponding columns
+merged_df <- response_factchecker %>%
+  left_join(final_df %>% select(statementText, item_nr), by = c("title" = "statementText"))
+
+merged_df_distinct <- merged_df %>%
+  distinct()
+
+# Filter merged_df_distinct for item_nr with Headline_relevance equal to 1
+filtered_item_nr <- merged_df_distinct %>%
+  filter(relevance > 2) %>%
+  pull(item_nr)
+
+# Combine items_absolutedenier_works with filtered_item_nr
+final_item_nr_list <- intersect(items_absolutedenier_works, filtered_item_nr)
+
+# Filter final_df based on the combined list of item_nr
+filtered_final_df <- final_df %>%
+  filter(item_nr %in% final_item_nr_list)
+
+# Calculate the number of unique item_nr in the filtered final_df
+num_unique_item_nr <- filtered_final_df %>%
+  summarise(unique_item_nr_count = n_distinct(item_nr)) %>%
+  pull(unique_item_nr_count)
+
+# Print the number of unique item_nr
+print(num_unique_item_nr)
+
+writeLines(as.character(final_item_nr_list), "included_item_nrs.txt")
+
+
+
+figuredata = filtered_final_df %>%
+  mutate(entry_name = factor(entry_name, labels = c('AbsoluteDenier', 'OriginDenier', 'Original')))
+
+summary_data <- figuredata %>%
+  group_by(entry_name) %>%
+  summarize(
+    mean_agreement = mean(agreement_rating, na.rm = TRUE),
+    se_agreement = sd(agreement_rating, na.rm = TRUE) / sqrt(n())
+  )
+
+
+ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
+  labs(x = "Headline type", y = "Anticipated agreement", title = "Mean Agreement Rating by Headline Type with Standard Errors") +
+  theme_minimal()
+
+final_df = filtered_final_df %>%
+  mutate(absoluteheadline = ifelse(entry_name =='selected_title_AbsoluteDenier',1,0),
+         originheadline = ifelse(entry_name =='selected_title_OriginDenier',1,0))%>%
+  filter(climate2 == "Caused mostly by natural changes in the environment" | 
+         climate2 == "None of the above because global warming isn’t happening")
+
+model1 = lmer(agreement_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+
+```
