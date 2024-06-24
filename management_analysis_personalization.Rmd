@@ -340,7 +340,10 @@ sum(diff_data$agreement_absolute)
 
 ```{r item selection based on fact-check}
 
+# Load necessary libraries
 library(readxl)
+library(dplyr)
+library(stringdist)
 
 # Load the final_df and response_factchecker dataframes
 response_factchecker <- read_excel("response_factcheck.xlsx")
@@ -352,20 +355,84 @@ final_df <- final_df %>%
 response_factchecker <- response_factchecker %>%
   mutate(title = as.character(title))
 
-# Merge the dataframes based on the corresponding columns
-merged_df <- response_factchecker %>%
-  left_join(final_df %>% select(statementText, item_nr), by = c("title" = "statementText"))
+# Normalize text function
+normalize_text <- function(text) {
+  text <- tolower(text)                    # Convert to lower case
+  text <- gsub("[[:punct:]]", "", text)    # Remove punctuation
+  text <- trimws(text)                     # Trim whitespace
+  return(text)
+}
 
+# Apply normalization
+final_df <- final_df %>%
+  mutate(statementText_normalized = normalize_text(statementText))
+
+response_factchecker <- response_factchecker %>%
+  mutate(title_normalized = normalize_text(title))
+
+# Merge the dataframes based on the normalized columns
+merged_df <- response_factchecker %>%
+  left_join(final_df %>% select(statementText, item_nr, statementText_normalized), by = c("title_normalized" = "statementText_normalized"))
+
+# Identify unmatched titles
+unmatched_titles <- merged_df %>%
+  filter(is.na(item_nr)) %>%
+  select(title) %>%
+  distinct()
+
+print("Unmatched Titles:")
+print(unmatched_titles$title)
+
+# Fuzzy matching for unmatched titles
+unmatched_titles <- unmatched_titles %>%
+  mutate(title_normalized = normalize_text(title))
+
+final_df_normalized <- final_df %>%
+  select(statementText, item_nr, statementText_normalized)
+
+fuzzy_match_results <- lapply(unmatched_titles$title_normalized, function(x) {
+  distances <- stringdist::stringdist(x, final_df_normalized$statementText_normalized, method = "jw")
+  min_index <- which.min(distances)
+  return(final_df_normalized[min_index, c("statementText", "item_nr")])
+})
+
+# Combine fuzzy match results
+fuzzy_match_df <- do.call(rbind, fuzzy_match_results)
+
+# Merge fuzzy matched results back to the original data
+unmatched_titles <- unmatched_titles %>%
+  bind_cols(fuzzy_match_df)
+
+# Merge the fuzzy matched results back to the original merged_df
+merged_df <- merged_df %>%
+  left_join(unmatched_titles %>% select(title, statementText_fuzzy = statementText, item_nr_fuzzy = item_nr), by = "title") %>%
+  mutate(
+    item_nr = ifelse(is.na(item_nr), item_nr_fuzzy, item_nr),
+    statementText = ifelse(is.na(statementText), statementText_fuzzy, statementText)
+  ) %>%
+  select(-statementText_fuzzy, -item_nr_fuzzy)
+
+# Proceed with the rest of your filtering and analysis steps as before
 merged_df_distinct <- merged_df %>%
   distinct()
 
-# Filter merged_df_distinct for item_nr with Headline_relevance equal to 1
+# Identify excluded statementText due to relevance filter
+excluded_by_relevance <- merged_df_distinct %>%
+  filter(relevance <= 3 | is.na(relevance)) %>%
+  select(title)
+
+# Filter merged_df_distinct for item_nr with relevance greater than 2
 filtered_item_nr <- merged_df_distinct %>%
-  filter(relevance > 2) %>%
+  filter(relevance > 3 & !is.na(relevance)) %>%
   pull(item_nr)
 
 # Combine items_absolutedenier_works with filtered_item_nr
 final_item_nr_list <- intersect(items_absolutedenier_works, filtered_item_nr)
+
+# Identify excluded statementText due to final_item_nr_list filter
+excluded_by_item_nr_list <- final_df %>%
+  filter(entry_name=='selected_title_AbsoluteDenier')%>%
+  filter(!(item_nr %in% items_absolutedenier_works)) 
 
 # Filter final_df based on the combined list of item_nr
 filtered_final_df <- final_df %>%
@@ -376,12 +443,21 @@ num_unique_item_nr <- filtered_final_df %>%
   summarise(unique_item_nr_count = n_distinct(item_nr)) %>%
   pull(unique_item_nr_count)
 
-# Print the number of unique item_nr
-print(num_unique_item_nr)
+# Print the values of statementText being excluded at each step
+print("Excluded due to relevance filter:")
+print(excluded_by_relevance$title)
+
+print("Excluded due to failed manipulation check filter:")
+print(levels(factor(excluded_by_item_nr_list$statementText)))
+
+# Print the number of unique item_nr in the filtered final_df
+print(paste("Number of unique item_nr in the filtered final_df:", num_unique_item_nr))
 
 writeLines(as.character(final_item_nr_list), "included_item_nrs.txt")
 
-
+item1 = final_df%>%
+  filter(item_nr==1& entry_name == 'selected_title_AbsoluteDenier')%>%
+  select(statementText)
 
 figuredata = filtered_final_df %>%
   mutate(entry_name = factor(entry_name, labels = c('AbsoluteDenier', 'OriginDenier', 'Original')))
