@@ -110,7 +110,6 @@ final_df <- final_df %>%
 
 
 
-
 ```
 
 ```{r correlations}
@@ -333,6 +332,7 @@ diff_data <- wide_data %>%
 sum(diff_data$agreement_absolute)
 #save the item_nrs
 
+write.csv(diff_data, file = 'diff_data.csv', row.names = FALSE)
 
 
 

@@ -127,7 +127,15 @@ final_df <- final_df %>%
   mutate(vote=ifelse(vote=='upvote',1,0),
          bookmarked=ifelse(bookmarked=="true",1,0))
 
+
+
+
+#read prolific data and add it
+df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
+
+
 rm(list = setdiff(ls(), c("df", "final_df")))
+
 ```
 
 final_df is longformat data for analysing bookmarks and votes, df is the wide format data for analyzing priors, regret, credibility, posteriors
@@ -359,6 +367,161 @@ model1=lmer(upvote_regret ~ condition_stat*prior_cause_1 + (1|selectedValue), da
 summary(model1)
 
 
+
+
+```
+
+
+
+```{r item level heterogeneity}
+#create item_level-bookmark and item level bookmarking situations.
+# URL of the JSON file on GitHub
+json_url <- "https://raw.githubusercontent.com/bencebago/news_personalization/main/filtered_relevant_articles_science.json"
+
+json_data <- fromJSON(content(GET(json_url), "text", encoding = "UTF-8"))
+
+
+find_row <- function(statement, df) {
+  for (i in seq_len(nrow(df))) {
+    if (statement %in% df[i, ]) {
+      return(i)
+    }
+  }
+  return(NA)
+}
+
+##add selectedvalue item nr to df NOTE THAT neutral articles will be NA
+
+df <- df %>%
+  mutate(item_nr =  map_int(selectedValue, ~ find_row(.x, json_data)))
+##add item nrs to final_df
+
+final_df <- final_df %>%
+  mutate(item_nr =  map_int(title, ~ find_row(.x, json_data)))
+
+
+##now calculate average vote and bookmark value for each item
+average_df <- final_df %>%
+  group_by(item_nr, condition,climate2) %>%
+  summarise(
+    average_vote = mean(vote, na.rm = TRUE),
+    average_bookmark = mean(bookmarked, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Pivot the data to wide format to separate the conditions
+average_wide_df <- average_df %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = c(average_vote, average_bookmark),
+    names_prefix = "condition_"
+  )
+
+# Calculate the differences between the conditions
+average_diff_df <- average_wide_df %>%
+  mutate(
+    original_vote_average = average_vote_condition_original,
+    personal_vote_average = average_vote_condition_personal,
+    original_bookmark_average = average_bookmark_condition_original,
+    personal_bookmark_average = average_bookmark_condition_personal,
+    vote_difference = original_vote_average - personal_vote_average,
+    bookmark_difference = original_bookmark_average - personal_bookmark_average
+  )
+
+# Select and rename the desired columns
+average_final_df <- average_diff_df %>%
+  select(
+    item_nr,
+    original_vote_average,
+    personal_vote_average,
+    vote_difference,
+    original_bookmark_average,
+    personal_bookmark_average,
+    bookmark_difference,
+    climate2
+  )
+
+###save diff dataset and add it based on item nrs
+diff_data = read.csv('diff_data.csv', header=T)
+
+average_final_df <- average_final_df%>%
+  left_join(diff_data, by = 'item_nr')%>%
+  filter(climate2==2|climate2==3)
+
+
+
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+
+##now df regret measures
+
+
+average_df <- df %>%
+  group_by(item_nr, condition,climate2) %>%
+  summarise(
+    average_vote_regret = mean(upvote_regret, na.rm = TRUE),
+    average_bookmark_regret = mean(bookmark_regret_1, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Pivot the data to wide format to separate the conditions
+average_wide_df <- average_df %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = c(average_vote_regret, average_bookmark_regret),
+    names_prefix = "condition_"
+  )
+
+# Calculate the differences between the conditions
+average_diff_df <- average_wide_df %>%
+  mutate(
+    original_vote_regret_average = average_vote_regret_condition_original,
+    personal_vote_regret_average = average_vote_regret_condition_personal,
+    original_bookmark_regret_average = average_bookmark_regret_condition_original,
+    personal_bookmark_regret_average = average_bookmark_regret_condition_personal,
+    vote_difference = original_vote_regret_average - personal_vote_regret_average,
+    bookmark_difference = original_bookmark_regret_average - personal_bookmark_regret_average
+  )
+
+# Select and rename the desired columns
+average_final_df <- average_diff_df %>%
+  select(
+    item_nr,
+    original_vote_regret_average,
+    personal_vote_regret_average,
+    vote_difference,
+    original_bookmark_regret_average,
+    personal_bookmark_regret_average,
+    bookmark_difference,
+    climate2
+  )
+
+average_final_df <- average_final_df%>%
+  left_join(diff_data, by = 'item_nr')%>%
+  filter(climate2==2|climate2==3)
+
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+####nothing to see here on the regret side of things.
 
 
 ```
