@@ -136,7 +136,9 @@ climate2 is a measure of climate change belief: Assuming global warming is happe
 
 the question was preceded by climate1 : Recently, you may have noticed that global warming has been getting some attention in the news. Global warming refers to the idea that the world’s average temperature has been increasing over the past 150 years, may be increasing more in the future, and that the world’s climate may change as a result. What do you think: Do you think that global warming is happening? With three options: 1: Yes, 2: No, 3: Don't know.
 
-THen we have continuous prior belief measures of 3 type: happening, cause, risk where higher value means more belief in climate change.
+THen we have continuous prior belief measures of 3 type: happening, cause, risk where higher value means more belief in climate change.Same for posteriors
+
+bookmark - vote: 1:Upvoted/bookmarked 0:downvoted/not bookmarked
 
 ```{r graphs, echo=FALSE}
 aggregated_data <- final_df %>%
