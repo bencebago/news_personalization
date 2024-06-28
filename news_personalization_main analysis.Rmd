@@ -1,0 +1,362 @@
+---
+title: "News personaliziation mock social media experiment"
+author: "Bence Bago"
+date: "2024-06-25"
+output: pdf_document
+---
+
+```{r package, include=FALSE}
+library(tidyverse)
+library(lmerTest)
+library(ggplot2)
+library(tidyr)
+library(jsonlite)
+library(ggplot2)
+
+```
+
+
+```{r management}
+column_names <- names(read.csv("personalization_social_media_June 28, 2024_05.24.csv", nrows = 1))
+
+df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
+
+names(df) <- column_names
+
+df <- df %>%
+  mutate(across(starts_with("bookmarked"), ~ ifelse(is.na(.) | . == '', 'false', .)))%>%
+  mutate(upvote_regret=ifelse(upvote_regret==1,1,0))
+
+duplicates <- df[duplicated(df$prolific), ]
+##there is one p duplicate that produced no data twice. excluding it
+df <- df[!duplicated(df$prolific), ]
+
+
+ratings_columns <- grep("^vote[0-9]+$", colnames(df), value = TRUE)
+statement_columns <- grep("^title[0-9]+$", colnames(df), value = TRUE)
+
+ratings_columns <- sort(ratings_columns)
+statement_columns <- sort(statement_columns)
+
+df_long_votes <- df %>%
+  select(prolific, all_of(ratings_columns)) %>%
+  pivot_longer(
+    cols = all_of(ratings_columns),
+    names_to = "number",
+    values_to = "vote",
+    names_pattern = "vote([0-9]+)"
+  )
+
+df_long_titles <- df %>%
+  select(prolific, all_of(statement_columns)) %>%
+  pivot_longer(
+    cols = all_of(statement_columns),
+    names_to = "number",
+    values_to = "title",
+    names_pattern = "title([0-9]+)"
+  )
+
+df_long_vote <- df_long_votes %>%
+  left_join(df_long_titles, by = c("prolific", "number"))
+
+bookmark_columns <- grep("^bookmarked[0-9]+$", colnames(df), value = TRUE)
+bookmarked_title_columns <- grep("^bookmarkedtitle[0-9]+$", colnames(df), value = TRUE)
+
+bookmark_columns <- sort(bookmark_columns)
+bookmarked_title_columns <- sort(bookmarked_title_columns)
+
+df_long_bookmark <- df %>%
+  select(prolific, all_of(bookmark_columns)) %>%
+  pivot_longer(
+    cols = all_of(bookmark_columns),
+    names_to = "bookmarkorder",
+    values_to = "bookmarked",
+    names_pattern = "bookmarked([0-9]+)"
+  )
+
+df_long_bookmarked_titles <- df %>%
+  select(prolific, all_of(bookmarked_title_columns)) %>%
+  pivot_longer(
+    cols = all_of(bookmarked_title_columns),
+    names_to = "bookmarkorder",
+    values_to = "bookmarkedtitle",
+    names_pattern = "bookmarkedtitle([0-9]+)"
+  )
+
+df_long_bookmarked <- df_long_bookmark %>%
+  left_join(df_long_bookmarked_titles, by = c("prolific", "bookmarkorder"))
+
+final_df <- df_long_vote %>%
+  left_join(df_long_bookmarked, by = c("prolific", "title" = "bookmarkedtitle"))
+
+
+
+url <- "https://raw.githubusercontent.com/bencebago/news_personalization/main/filtered_data_experiment.json"
+json_data <- fromJSON(url)
+json_titles <-  c(json_data$title, json_data$selected_title_AbsoluteDenier)
+
+
+# Assuming final_df is already created as per previous steps
+# Create a new variable 'type' in final_df
+final_df <- final_df %>%
+  mutate(type = ifelse(title %in% json_titles, 'climate', 'neutral'))
+
+##from original json I i should add the index for each each title for item nr that will be used for joining with the different datasets. 
+
+
+####some analysis will be run on original dataset, like posterior analysis
+
+
+## add columns to original dataset, most importantly climate change denier classification and statistics. 
+df = df%>%
+  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3, 'Denier', NA)),
+         climate_stat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
+         condition_stat = ifelse(condition=='original', 0.5, -0.5))
+
+####
+additional_columns <- c("condition", "climate1", "climate2", "prior_cause_1", "prior_happen_1", "prior_risk_1",
+                        "P2..Attention.Check1", "Q6..Ideology_econ", "Q7..Ideology_social", "DemRep_C",
+                        "Interest_1", "Interest_2", "Interest_3", "Interest_4", "Interest_5", "Interest_6", "Interest_7",
+                        "Educational.Level", "bookmark_regret_1", "upvote_regret", "credibility_1", "selectedValue",
+                        "posterior_cause_1", "posterior_happen_1", "posterior_risk_1", 'Q110', 'Q111', 'condition_stat', 'climate_stat', 'climate_figure', 'condition_stat')
+
+additional_columns <- additional_columns[additional_columns %in% colnames(df)]
+
+final_df <- final_df %>%
+  left_join(df %>% select(prolific, all_of(additional_columns)), by = "prolific")%>%
+  mutate(vote=ifelse(vote=='upvote',1,0),
+         bookmarked=ifelse(bookmarked=="true",1,0))
+
+rm(list = setdiff(ls(), c("df", "final_df")))
+```
+
+final_df is longformat data for analysing bookmarks and votes, df is the wide format data for analyzing priors, regret, credibility, posteriors
+
+climate2 is a measure of climate change belief: Assuming global warming is happening, do you think it is… ? with 5 options: 1: Caused mostly by human activities, 2: Caused mostly by natural changes in the environment, 3, None of the above becouse global warming is not happening, 4: Other, 5: Don't know.
+
+the question was preceded by climate1 : Recently, you may have noticed that global warming has been getting some attention in the news. Global warming refers to the idea that the world’s average temperature has been increasing over the past 150 years, may be increasing more in the future, and that the world’s climate may change as a result. What do you think: Do you think that global warming is happening? With three options: 1: Yes, 2: No, 3: Don't know.
+
+THen we have continuous prior belief measures of 3 type: happening, cause, risk where higher value means more belief in climate change.
+
+```{r graphs, echo=FALSE}
+aggregated_data <- final_df %>%
+  filter(type=='climate' & !is.na(condition) & !is.na(climate_figure))%>%
+  group_by(climate_figure, condition) %>%
+  summarise(
+    mean_climate_figure = mean(vote),
+    se_climate_figure = sd(vote) / sqrt(n())
+  )
+
+# Create the bar graph with error bars
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  labs(title="", 
+       x='Climate belief', 
+       y="Upvote (%)") +
+  theme_minimal()
+
+
+aggregated_data <- final_df %>%
+  filter(type=='climate' & !is.na(condition) & !is.na(climate_figure))%>%
+  group_by(climate_figure, condition) %>%
+  summarise(
+    mean_climate_figure = mean(bookmarked),
+    se_climate_figure = sd(bookmarked) / sqrt(n())
+  )
+
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  labs(title="Bookmark", 
+       x="Climate belief", 
+       y="Bookmarked (%)") +
+  theme_minimal()
+
+aggregated_data <- df %>%
+  filter( !is.na(condition) & !is.na(climate_figure))%>%
+  group_by(climate_figure, condition) %>%
+  summarise(
+    mean_climate_figure = mean(credibility_1,na.rm=T),
+    se_climate_figure = sd(credibility_1,na.rm=T) / sqrt(n())
+  )
+
+
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  labs(title="Bar Graph with Error Bars", 
+       x="Climate Belief", 
+       y="Credibility") +
+  theme_minimal()
+
+aggregated_data <- df %>%
+  filter( !is.na(condition) & !is.na(climate_figure))%>%
+  group_by(climate_figure, condition) %>%
+  summarise(
+    mean_climate_figure = mean(bookmark_regret_1),
+    se_climate_figure = sd(bookmark_regret_1) / sqrt(n())
+  )
+
+
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  labs(title="Bookmark-regret", 
+       x="Climate belief", 
+       y="Bookmark regret (LESS regret is higher number the scale is reversed)") +
+  theme_minimal()
+
+
+aggregated_data <- df %>%
+  filter( !is.na(condition) & !is.na(climate_figure))%>%
+  group_by(climate_figure, condition) %>%
+  summarise(
+    mean_climate_figure = mean(upvote_regret),
+    se_climate_figure = sd(upvote_regret) / sqrt(n())
+  )
+
+
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  labs(title="Vote-regret", 
+       x="Climate belief", 
+       y="New upvote (%)") +
+  theme_minimal()
+
+
+
+ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
+  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
+  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
+                width=0.2, 
+                position=position_dodge(0.7)) +
+  facet_wrap(~climate2) +
+  labs(title="Bar Graph with Error Bars", 
+       x="Belief", 
+       y="Happen") +
+  theme_minimal()
+
+
+
+p <- ggplot(final_df, aes(x=prior_cause_1, y=posterior_cause_1)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
+  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") +  # Add the line of perfect correlation
+  labs(title="Scatter Plot with Regression Line and Perfect Correlation Line",
+       x="Prior Cause",
+       y="Posterior Cause") +
+  theme_minimal()
+print(p)
+
+p <- ggplot(final_df, aes(x=prior_happen_1, y=posterior_happen_1)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
+  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") + 
+    facet_wrap(~condition) +
+  labs(title="Scatter Plot with Regression Line and Perfect Correlation Line",
+       x="Prior Happen",
+       y="Posterior Happen") +
+  theme_minimal()
+
+print(p)
+
+
+
+
+```
+
+
+```{r preregistered analysis, echo=FALSE}
+
+#is there belief updating?
+t.test(df[df$condition=='original',]$prior_cause_1, df[df$condition=='original',]$posterior_cause_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_cause_1, df[df$condition=='personal',]$posterior_cause_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_happen_1, df[df$condition=='original',]$posterior_happen_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_happen_1, df[df$condition=='personal',]$posterior_happen_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_risk_1, df[df$condition=='original',]$posterior_risk_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_risk_1, df[df$condition=='personal',]$posterior_risk_1, paired=TRUE)
+
+
+##condition has an effect on posteriors?
+model1=lmer(posterior_happen_1 ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(posterior_cause_1 ~ condition + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(posterior_risk_1 ~ condition + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+#preregistered analysis
+model1=lmer(credibility_1 ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmark_regret_1 ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(upvote_regret ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(bookmarked ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+
+#Continuous measures
+model1=lmer(bookmarked ~ condition_stat*prior_happen_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat*prior_cause_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat*prior_happen_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat*prior_cause_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+summary(model1)
+
+
+##bookmark regret effect is not significant with prior_happen, the rest replicates the dichotomous analysis
+model1=lmer(credibility_1 ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmark_regret_1 ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(upvote_regret ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+
+model1=lmer(credibility_1 ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmark_regret_1 ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(upvote_regret ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+
+
+```
