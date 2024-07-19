@@ -368,6 +368,9 @@ summary(model1)
 
 ```
 
+INSTRUCTIONS FOR ITEM LEVEL HETEROGENEITY:
+Run the code below named item level heterogeneity, it produces an item level database called
+It creates a dataset average_final_df, I think the variables are self-explanatory. THe dataset is created with respecting priors (climate2 variable, see coding above). If you want to change this, in the below code, I made a note which part to change. use the AbsoluteDenier variables. distance means the difference between the averages of the original and flipped version of a given headline with respective of a given variable (anticipated agreement, regret, positive emotions, negative emotions). Vote difference and bookmark difference also refers to this in bookmarks and votes.
 
 ```{r item level heterogeneity}
 #create item_level-bookmark and item level bookmarking situations.
@@ -419,8 +422,9 @@ final_df <- final_df %>%
 
 
 ##now calculate average vote and bookmark value for each item
+###IN THE BELOW CODE< IF YOU DO NOT WANT TO SEPARATE BY PRIORS OR DO ANOTHER CLASSIFICATION< YOU NEED TO CHANGE THE GROUP IN THE BELOW CODE, BUT NOTHING ELSE
 average_df <- final_df %>%
-  group_by(item_nr, condition,climate2) %>%
+  group_by(item_nr, condition,climate2) %>% #THIS LINE TO CHANGE TO GET RID OF CLIMATE2
   summarise(
     average_vote = mean(vote, na.rm = TRUE),
     average_bookmark = mean(bookmarked, na.rm = TRUE)
@@ -465,99 +469,15 @@ diff_data = read.csv('diff_data.csv', header=T)
 average_final_df <- average_final_df%>%
   left_join(diff_data, by = 'item_nr')%>%
   left_join(response_relevance, by = "item_nr")%>%
-  filter(climate2==2|climate2==3)%>%
   mutate(relevance = ifelse(relevance == 4, 0, 1))
 
 
-
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$vote_difference, average_final_df$relevance)
-cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
-
-
-
-##now df regret measures
-
-
-average_df <- df %>%
-  group_by(item_nr, condition,climate2) %>%
-  summarise(
-    average_vote_regret = mean(upvote_regret, na.rm = TRUE),
-    average_bookmark_regret = mean(bookmark_regret_1, na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-# Pivot the data to wide format to separate the conditions
-average_wide_df <- average_df %>%
-  pivot_wider(
-    names_from = condition,
-    values_from = c(average_vote_regret, average_bookmark_regret),
-    names_prefix = "condition_"
-  )
-
-# Calculate the differences between the conditions
-average_diff_df <- average_wide_df %>%
-  mutate(
-    original_vote_regret_average = average_vote_regret_condition_original,
-    personal_vote_regret_average = average_vote_regret_condition_personal,
-    original_bookmark_regret_average = average_bookmark_regret_condition_original,
-    personal_bookmark_regret_average = average_bookmark_regret_condition_personal,
-    vote_difference = original_vote_regret_average - personal_vote_regret_average,
-    bookmark_difference = original_bookmark_regret_average - personal_bookmark_regret_average
-  )
-
-# Select and rename the desired columns
-average_final_df <- average_diff_df %>%
-  select(
-    item_nr,
-    original_vote_regret_average,
-    personal_vote_regret_average,
-    vote_difference,
-    original_bookmark_regret_average,
-    personal_bookmark_regret_average,
-    bookmark_difference,
-    climate2
-  )
-
-average_final_df <- average_final_df%>%
-  left_join(diff_data, by = 'item_nr')%>%
-  left_join(response_relevance, by = "item_nr")%>%
-  filter(climate2==2|climate2==3)%>%
-  mutate(relevance = ifelse(relevance == 4, 0, 1))
-
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-####nothing to see here on the regret side of things.
-
-
-
-###heterogeneity on relevance
-cor.test(average_final_df$vote_difference, average_final_df$relevance)
-cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
-
-
+rm(list = setdiff(ls(), c("df", "final_df", 'average_final_df')))
 
 ```
+
+
+
 
 ```{r new regret analysis}
 
@@ -692,6 +612,99 @@ ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condit
        x="Climate belief", 
        y="Bookmark regret") +
   theme_minimal()
+
+
+```
+
+
+
+```{r regret heterogeneity}
+
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+cor.test(average_final_df$vote_difference, average_final_df$relevance)
+cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
+
+
+
+##now df regret measures
+
+
+average_df <- df %>%
+  group_by(item_nr, condition,climate2) %>%
+  summarise(
+    average_vote_regret = mean(upvote_regret, na.rm = TRUE),
+    average_bookmark_regret = mean(bookmark_regret_1, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Pivot the data to wide format to separate the conditions
+average_wide_df <- average_df %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = c(average_vote_regret, average_bookmark_regret),
+    names_prefix = "condition_"
+  )
+
+# Calculate the differences between the conditions
+average_diff_df <- average_wide_df %>%
+  mutate(
+    original_vote_regret_average = average_vote_regret_condition_original,
+    personal_vote_regret_average = average_vote_regret_condition_personal,
+    original_bookmark_regret_average = average_bookmark_regret_condition_original,
+    personal_bookmark_regret_average = average_bookmark_regret_condition_personal,
+    vote_difference = original_vote_regret_average - personal_vote_regret_average,
+    bookmark_difference = original_bookmark_regret_average - personal_bookmark_regret_average
+  )
+
+# Select and rename the desired columns
+average_final_df <- average_diff_df %>%
+  select(
+    item_nr,
+    original_vote_regret_average,
+    personal_vote_regret_average,
+    vote_difference,
+    original_bookmark_regret_average,
+    personal_bookmark_regret_average,
+    bookmark_difference,
+    climate2
+  )
+
+average_final_df <- average_final_df%>%
+  left_join(diff_data, by = 'item_nr')%>%
+  left_join(response_relevance, by = "item_nr")%>%
+  filter(climate2==2|climate2==3)%>%
+  mutate(relevance = ifelse(relevance == 4, 0, 1))
+
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+####nothing to see here on the regret side of things.
+
+
+
+###heterogeneity on relevance
+cor.test(average_final_df$vote_difference, average_final_df$relevance)
+cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
+
 
 
 ```
