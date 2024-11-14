@@ -172,7 +172,8 @@ sum(count_negatives[count_negatives$climate2=="None of the above because global 
 library(ggplot2)
 
 figuredata = final_df %>%
-  mutate(entry_name = factor(entry_name, labels = c('AbsoluteDenier', 'OriginDenier', 'Original')))
+  mutate(entry_name = factor(entry_name, labels = c('Flipped', 'OriginDenier', 'Original')))%>%
+  filter(entry_name!='OriginDenier')
 
 summary_data <- figuredata %>%
   group_by(entry_name) %>%
@@ -185,7 +186,7 @@ summary_data <- figuredata %>%
 ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
   geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
   geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
-  labs(x = "Headline type", y = "Anticipated agreement", title = "Mean Agreement Rating by Headline Type with Standard Errors") +
+  labs(x = "Headline type", y = "Anticipated agreement", title = "Mean Anticipated Agreement Rating") +
   theme_minimal()
 
 
@@ -201,7 +202,7 @@ summary_data <- figuredata %>%
 ggplot(summary_data, aes(x = entry_name, y = mean_agreement)) +
   geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
   geom_errorbar(aes(ymin = mean_agreement - se_agreement, ymax = mean_agreement + se_agreement), width = 0.2) +
-  labs(x = "Headline type", y = "Anticipated regret", title = "Mean Regret Rating by Headline Type with Standard Errors") +
+  labs(x = "Headline type", y = "Anticipated regret", title = "Mean Anticipated Regret Rating") +
   theme_minimal()
 
 
@@ -285,7 +286,7 @@ summary(model1)
 
 ```{r item selection based on manipulation check}
 
-library(dplyr)
+
 
 
 byItem <- final_df %>%
@@ -449,6 +450,13 @@ print(excluded_by_relevance$title)
 
 print("Excluded due to failed manipulation check filter:")
 print(levels(factor(excluded_by_item_nr_list$statementText)))
+
+
+print("Excluded due to relevance filter:")
+print(length(excluded_by_relevance$title))
+
+print("Excluded due to failed manipulation check filter:")
+print(length(levels(factor(excluded_by_item_nr_list$statementText))))
 
 # Print the number of unique item_nr in the filtered final_df
 print(paste("Number of unique item_nr in the filtered final_df:", num_unique_item_nr))

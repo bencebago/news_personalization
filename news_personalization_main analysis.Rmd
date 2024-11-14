@@ -14,7 +14,12 @@ library(jsonlite)
 library(ggplot2)
 library(httr)
 library(readxl)
-
+library(broom)
+library(purrr)
+library(dplyr)
+library(tidytext)
+library(textdata)
+library(moments)
 
 ```
 
@@ -112,16 +117,25 @@ final_df <- final_df %>%
 
 ## add columns to original dataset, most importantly climate change denier classification and statistics. 
 df = df%>%
-  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3, 'Denier', NA)),
-         climate_stat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
-         condition_stat = ifelse(condition=='original', 0.5, -0.5))
+  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3|climate2==5, 'Denier', NA)),
+         climate_stat = ifelse(climate2==1, 1, ifelse(climate2==2|climate2==3, -1, 0)),
+         condition_stat = ifelse(condition=='original', 0, 1),
+         cause_change = prior_cause_1 - posterior_cause_1,
+         risk_change = prior_risk_1 - posterior_risk_1,
+         happen_change = prior_happen_1 - posterior_happen_1,
+         posterior_happen_1 = posterior_happen_1 -50,
+         posterior_risk_1 = posterior_risk_1-50,
+         posterior_cause_1 = posterior_cause_1-50,
+         prior_cause_1 = prior_cause_1-50,
+         prior_happen_1 = prior_happen_1-50,
+         prior_risk_1 = prior_risk_1-50)
 
 ####
 additional_columns <- c("condition", "climate1", "climate2", "prior_cause_1", "prior_happen_1", "prior_risk_1",
                         "P2..Attention.Check1", "Q6..Ideology_econ", "Q7..Ideology_social", "DemRep_C",
                         "Interest_1", "Interest_2", "Interest_3", "Interest_4", "Interest_5", "Interest_6", "Interest_7",
                         "Educational.Level", "bookmark_regret_1", "upvote_regret", "credibility_1", "selectedValue",
-                        "posterior_cause_1", "posterior_happen_1", "posterior_risk_1", 'Q110', 'Q111', 'condition_stat', 'climate_stat', 'climate_figure', 'condition_stat')
+                        "posterior_cause_1", "posterior_happen_1", "posterior_risk_1", 'Q110', 'Q111', 'Q133', 'Q134', 'condition_stat', 'climate_stat', 'climate_figure', 'condition_stat')
 
 additional_columns <- additional_columns[additional_columns %in% colnames(df)]
 
@@ -129,6 +143,9 @@ final_df <- final_df %>%
   left_join(df %>% select(prolific, all_of(additional_columns)), by = "prolific")%>%
   mutate(vote=ifelse(vote=='upvote',1,0),
          bookmarked=ifelse(bookmarked=="true",1,0))
+  
+         
+         
 
 
 rm(list = setdiff(ls(), c("df", "final_df")))
@@ -255,24 +272,29 @@ ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condit
        y="Happen") +
   theme_minimal()
 
+p <- ggplot(final_df, aes(x=prior_risk_1, y=posterior_risk_1)) +
+  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
+  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") +  # Add the line of perfect correlation
+  labs(title="Likelihood of climate change having harmful consequences for humanity",
+       x="Prior Risk",
+       y="Posterior Risk") +
+  theme_minimal()
+print(p)
 
 
 p <- ggplot(final_df, aes(x=prior_cause_1, y=posterior_cause_1)) +
-  geom_point() +
   geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
-  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") +  # Add the line of perfect correlation
-  labs(title="Scatter Plot with Regression Line and Perfect Correlation Line",
+  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") +  # Add the line of perfect correlation
+  labs(title="Likelihood of climate change caused by human activity",
        x="Prior Cause",
        y="Posterior Cause") +
   theme_minimal()
 print(p)
 
 p <- ggplot(final_df, aes(x=prior_happen_1, y=posterior_happen_1)) +
-  geom_point() +
   geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
-  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") + 
-    facet_wrap(~condition) +
-  labs(title="Scatter Plot with Regression Line and Perfect Correlation Line",
+  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") + 
+  labs(title="Likelihood of climate change happening",
        x="Prior Happen",
        y="Posterior Happen") +
   theme_minimal()
@@ -285,8 +307,8 @@ print(p)
 ```
 
 
-```{r preregistered analysis, echo=FALSE}
-
+```{r engagement analysis, echo=FALSE}
+table(df$climate2)
 #is there belief updating?
 t.test(df[df$condition=='original',]$prior_cause_1, df[df$condition=='original',]$posterior_cause_1, paired=TRUE)
 t.test(df[df$condition=='personal',]$prior_cause_1, df[df$condition=='personal',]$posterior_cause_1, paired=TRUE)
@@ -297,6 +319,31 @@ t.test(df[df$condition=='personal',]$prior_happen_1, df[df$condition=='personal'
 t.test(df[df$condition=='original',]$prior_risk_1, df[df$condition=='original',]$posterior_risk_1, paired=TRUE)
 t.test(df[df$condition=='personal',]$prior_risk_1, df[df$condition=='personal',]$posterior_risk_1, paired=TRUE)
 
+quantile(df$prior_happen_1,na.rm=T)
+quantile(df$prior_cause_1, na.rm=T)
+quantile(df$prior_risk_1, na.rm=T)
+
+
+# Create a function to count the number of data points within the specified ranges
+count_ranges <- function(x) {
+  c(
+    sum(x >= -50 & x <= -25, na.rm=T),
+    sum(x >= -24 & x <= 0,na.rm=T),
+    sum(x >= 1 & x <= 25,na.rm=T),
+    sum(x >= 26 & x <= 50,na.rm=T)
+  )
+}
+
+# Apply the function to each variable and create a table
+result_table <- data.frame(
+  Range = c("[-50, -25]", "[-24, 0]", "[1, 25]", "[26, 50]"),
+  prior_happen_1 = count_ranges(df$prior_happen_1),
+  prior_risk_1 = count_ranges(df$prior_risk_1),
+  prior_cause_1 = count_ranges(df$prior_cause_1)
+)
+
+# Print the result table
+print(result_table)
 
 ##condition has an effect on posteriors?
 model1=lmer(posterior_happen_1 ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
@@ -309,68 +356,186 @@ model1=lmer(posterior_risk_1 ~ condition + (1|selectedValue), data=df, na.action
 summary(model1)
 
 
+model1=lmer(cause_change ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lm(happen_change ~ condition, data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(risk_change ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
 #preregistered analysis
-model1=lmer(credibility_1 ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
+data= final_df[final_df$type=='climate',]
 
-model1=lmer(bookmark_regret_1 ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
-model1=lmer(upvote_regret ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=data, na.action=na.omit)
 summary(model1)
 
 
-model1=lmer(bookmarked ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+model1=lmer(vote ~ climate_stat*condition_stat + (1|title)+ (1|prolific), data=data, na.action=na.omit)
 summary(model1)
 
-model1=lmer(vote ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=data[data$prior_risk_1 < -24,],  na.action=na.omit)
 summary(model1)
-
 
 #Continuous measures
-model1=lmer(bookmarked ~ condition_stat*prior_happen_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat*scale(prior_happen_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
-model1=lmer(bookmarked ~ condition_stat*prior_cause_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat*scale(prior_cause_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
-
-model1=lmer(vote ~ condition_stat*prior_happen_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
-summary(model1)
-
-model1=lmer(vote ~ condition_stat*prior_cause_1 + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat*scale(prior_risk_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
 
-##bookmark regret effect is not significant with prior_happen, the rest replicates the dichotomous analysis
-model1=lmer(credibility_1 ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(vote ~ condition_stat*scale(prior_happen_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
-model1=lmer(bookmark_regret_1 ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(vote ~ condition_stat*scale(prior_cause_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
-model1=lmer(upvote_regret ~ condition_stat*prior_happen_1  + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(vote ~ condition_stat*scale(prior_risk_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
 summary(model1)
 
 
 
-model1=lmer(credibility_1 ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+
+
+
+####most skeptical audience
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < -24, ], na.action=na.omit)
 summary(model1)
 
-model1=lmer(bookmark_regret_1 ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < -24,], na.action=na.omit)
 summary(model1)
 
-model1=lmer(upvote_regret ~ condition_stat*prior_cause_1 + (1|selectedValue), data=df, na.action=na.omit)
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < -24,], na.action=na.omit)
 summary(model1)
 
 
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < -24, ], na.action=na.omit)
+summary(model1)
 
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < -24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < -24,,], na.action=na.omit)
+summary(model1)
+
+#least skeptical audience
+
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > 24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > 24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > 24,], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > 24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > 24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > 24,,], na.action=na.omit)
+summary(model1)
+
+cor.test(final_df$vote, final_df$bookmarked)
 
 ```
 
-INSTRUCTIONS FOR ITEM LEVEL HETEROGENEITY:
-Run the code below named item level heterogeneity, it produces an item level database called
-It creates a dataset average_final_df, I think the variables are self-explanatory. THe dataset is created with respecting priors (climate2 variable, see coding above). If you want to change this, in the below code, I made a note which part to change. use the AbsoluteDenier variables. distance means the difference between the averages of the original and flipped version of a given headline with respective of a given variable (anticipated agreement, regret, positive emotions, negative emotions). Vote difference and bookmark difference also refers to this in bookmarks and votes.
+
+
+```{r backfire analysis, echo=FALSE}
+#vote
+df2 <- df %>%
+  left_join(final_df %>% select(title, vote, prolific), 
+            by = c("selectedValue" = "title", "prolific" = "prolific"))%>%
+  mutate(voteregret = ifelse(vote==1 & upvote_regret==1, '11', ifelse(vote==1 & upvote_regret==0, '10', ifelse(vote==0 & upvote_regret==1, '01', '00'))))
+
+mean(df2[df2$condition=='personal' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$upvote_regret, na.rm=T)-
+mean(df2[df2$condition=='personal' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$vote, na.rm=T)
+
+mean(df2[df2$condition=='original' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$upvote_regret, na.rm=T)-
+mean(df2[df2$condition=='original' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$vote, na.rm=T)
+
+
+mean(df2[df2$condition=='personal' & (df2$climate2==1),]$upvote_regret, na.rm=T)-
+mean(df2[df2$condition=='personal' & (df2$climate2==1),]$vote, na.rm=T)
+
+mean(df2[df2$condition=='original' & (df2$climate2==1),]$upvote_regret, na.rm=T)-
+mean(df2[df2$condition=='original' & (df2$climate2==1),]$vote, na.rm=T)
+
+
+df2_clean <- df2 %>%
+  filter(!is.na(voteregret), !is.na(condition), !is.na(climate2))%>%
+  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2==4, NA, 'Denier')),
+  believerstat = ifelse(climate2==1, 1, ifelse(climate2==2|climate2==3, -1, 0)),
+  change = ifelse(voteregret == '01' | voteregret== '10', 'Vote regretted', 'Vote NOT regretted'),
+  statchange =ifelse(change=='Vote regretted', 1,0),
+  conditionstat = ifelse(condition == 'original',0,1),
+  bookmark_regret = 100-bookmark_regret_1)
+
+# Create a contingency table
+table(df2_clean$condition, df2_clean$voteregret, df2_clean$denier)
+table(df2_clean[df2_clean$denier == 'Denier',]$condition, df2_clean[df2_clean$denier == 'Denier',]$change)
+
+df2_clean_vote = df2_clean %>%
+    filter(voteregret== '10'| voteregret=='11')
+
+model1 = lmer(statchange ~ believerstat*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
+summary(model1)
+
+model1 = lmer(statchange ~ scale(prior_cause_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
+summary(model1)
+
+model1 = lmer(statchange ~ scale(prior_happen_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
+summary(model1)
+
+model1 = lmer(statchange ~ scale(prior_risk_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
+summary(model1)
+
+
+
+#bookmark
+
+
+model1=lmer(scale(bookmark_regret_1) ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(scale(bookmark_regret_1) ~ condition_stat*scale(prior_happen_1)  + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(scale(bookmark_regret_1) ~ condition_stat*scale(prior_cause_1) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(scale(bookmark_regret_1) ~ condition_stat*scale(prior_risk_1) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+#trust
+
+model1=lmer(scale(credibility_1) ~ condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(scale(credibility_1) ~ condition_stat*scale(prior_happen_1)  + (condition_stat|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+model1=lmer(scale(credibility_1) ~ condition_stat*scale(prior_cause_1) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(scale(credibility_1) ~ condition_stat*scale(prior_risk_1)  + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+```
+
 
 ```{r item level heterogeneity}
 #create item_level-bookmark and item level bookmarking situations.
@@ -378,6 +543,15 @@ It creates a dataset average_final_df, I think the variables are self-explanator
 json_url <- "https://raw.githubusercontent.com/bencebago/news_personalization/main/filtered_relevant_articles_science.json"
 
 json_data <- fromJSON(content(GET(json_url), "text", encoding = "UTF-8"))
+
+# Function to count words in a single string
+count_words <- function(string) {
+  words <- strsplit(string, "\\s+")
+  return(length(unlist(words)))
+}
+
+# Apply the function to each string in the vector
+json_data$wordcount <- sapply(json_data$text, count_words)
 
 # Read the response_factcheck.xlsx file
 response_factcheck <- read_excel("response_factcheck.xlsx")
@@ -396,6 +570,9 @@ find_row <- function(statement, df) {
 df <- df %>%
   mutate(item_nr = map_int(selectedValue, ~ find_row(.x, json_data)))
 
+df <- df %>%
+  mutate(wordcount = ifelse(!is.na(item_nr), json_data$wordcount[item_nr], NA))
+
 # Add item_nr to final_df
 final_df <- final_df %>%
   mutate(item_nr = map_int(title, ~ find_row(.x, json_data)))
@@ -407,6 +584,9 @@ response_factcheck <-response_factcheck %>%
 
 response_relevance <- response_factcheck %>%
   select(item_nr, relevance)
+
+jsonlength=json_data %>%
+  select(item_nr)
 
 # Merge relevance column with df based on item_nr
 df <- df %>%
@@ -421,17 +601,14 @@ final_df <- final_df %>%
 
 
 
-##now calculate average vote and bookmark value for each item
-###IN THE BELOW CODE< IF YOU DO NOT WANT TO SEPARATE BY PRIORS OR DO ANOTHER CLASSIFICATION< YOU NEED TO CHANGE THE GROUP IN THE BELOW CODE, BUT NOTHING ELSE
 average_df <- final_df %>%
-  group_by(item_nr, condition,climate2) %>% #THIS LINE TO CHANGE TO GET RID OF CLIMATE2
+  group_by(item_nr, condition,climate2) %>% 
   summarise(
     average_vote = mean(vote, na.rm = TRUE),
     average_bookmark = mean(bookmarked, na.rm = TRUE)
   ) %>%
   ungroup()
 
-# Pivot the data to wide format to separate the conditions
 average_wide_df <- average_df %>%
   pivot_wider(
     names_from = condition,
@@ -439,7 +616,6 @@ average_wide_df <- average_df %>%
     names_prefix = "condition_"
   )
 
-# Calculate the differences between the conditions
 average_diff_df <- average_wide_df %>%
   mutate(
     original_vote_average = average_vote_condition_original,
@@ -450,7 +626,6 @@ average_diff_df <- average_wide_df %>%
     bookmark_difference = original_bookmark_average - personal_bookmark_average
   )
 
-# Select and rename the desired columns
 average_final_df <- average_diff_df %>%
   select(
     item_nr,
@@ -463,7 +638,6 @@ average_final_df <- average_diff_df %>%
     climate2
   )
 
-###save diff dataset and add it based on item nrs
 diff_data = read.csv('diff_data.csv', header=T)
 
 average_final_df <- average_final_df%>%
@@ -477,234 +651,61 @@ rm(list = setdiff(ls(), c("df", "final_df", 'average_final_df')))
 ```
 
 
+```{r headline linguistic analysis}
+df <- read_excel('headlines_analysis_clickbait.xlsx')
 
-
-```{r new regret analysis}
-
-cor.test(final_df[final_df$condition=='personal',]$relevance, final_df[final_df$condition=='personal',]$vote)
-cor.test(final_df[final_df$condition=='personal',]$relevance, final_df[final_df$condition=='personal',]$bookmarked)
-
-
-cor.test(df[df$condition=='personal',]$relevance, df[df$condition=='personal',]$upvote_regret)
-cor.test(df[df$condition=='personal',]$relevance, df[df$condition=='personal',]$bookmark_regret_1)
-
-
-cor.test(final_df[final_df$condition=='personal' & (final_df$climate2==2|final_df$climate2==3|final_df$climate2==4),]$relevance, final_df[final_df$condition=='personal' & (final_df$climate2==2|final_df$climate2==3|final_df$climate2==4),]$vote)
-cor.test(final_df[final_df$condition=='personal' & (final_df$climate2==2|final_df$climate2==3|final_df$climate2==4),]$relevance, final_df[final_df$condition=='personal' & (final_df$climate2==2|final_df$climate2==3|final_df$climate2==4),]$bookmarked)
-
-
-cor.test(df[df$condition=='personal' & (df$climate2==2|df$climate2==3|df$climate2==4),]$relevance, df[df$condition=='personal'& (df$climate2==2|df$climate2==3|df$climate2==4),]$upvote_regret)
-cor.test(df[df$condition=='personal'& (df$climate2==2|df$climate2==3|df$climate2==4),]$relevance, df[df$condition=='personal'& (df$climate2==2|df$climate2==3|df$climate2==4),]$bookmark_regret_1)
-##no correlation between regret, or engagement and relevance
-
-
-#####analyse regret, did the article meet expectations?
-df2 <- df %>%
-  left_join(final_df %>% select(title, vote, prolific), 
-            by = c("selectedValue" = "title", "prolific" = "prolific"))%>%
-  mutate(voteregret = ifelse(vote==1 & upvote_regret==1, '11', ifelse(vote==1 & upvote_regret==0, '10', ifelse(vote==0 & upvote_regret==1, '01', '00'))))
-
-cor.test(df2[df2$condition=='personal' & (df2$climate2==2|df2$climate2==3|df2$climate2==4),]$vote, df2[df2$condition=='personal'& (df2$climate2==2|df2$climate2==3|df2$climate2==4),]$upvote_regret)
-
-
-
-df2_clean <- df2 %>%
-  filter(!is.na(voteregret), !is.na(condition), !is.na(climate2))%>%
-  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2==4, NA, 'Denier')),
-  change = ifelse(voteregret == '01' | voteregret== '10', 'Vote regretted', 'Vote NOT regretted'),
-  statchange =ifelse(change=='Vote regretted', 1,0),
-  believerstat = ifelse(denier=='Denier', -0.5,0.5),
-  conditionstat = ifelse(condition == 'original',0,1),
-  bookmark_regret = 100-bookmark_regret_1)
-
-# Create a contingency table
-table(df2_clean$condition, df2_clean$change, df2_clean$denier)
-table(df2_clean[df2_clean$denier == 'Denier',]$condition, df2_clean[df2_clean$denier == 'Denier',]$change)
-
-
-model1 = lm(statchange ~ believerstat*conditionstat, data=df2_clean, na.action = na.omit)
-summary(model1)
-model1 = lm(statchange ~ conditionstat, data=df2_clean[df2_clean$denier=='Believer',], na.action = na.omit)
-summary(model1)
-
-model1 = lm(statchange ~ conditionstat, data=df2_clean[df2_clean$denier=='Denier',], na.action = na.omit)
-summary(model1)
-
-
-######testing for self-selection (people self-select into different articles in the two different conditions) there is moderate effect here
-prob_df <- df2_clean %>%
-  group_by(denier, condition, item_nr) %>%
-  summarise(count = n(), .groups = 'drop') %>%
-  group_by(denier, condition) %>%
-  mutate(probability = count / sum(count)) %>%
-  select(denier, condition, item_nr, probability) %>%
-  pivot_wider(names_from = condition, values_from = probability, values_fill = 0) %>%
-  rename(prob_original = `original`, prob_personal = `personal`)
-
-# Calculate the correlation for each denier
-correlation_results <- prob_df %>%
-  group_by(denier) %>%
-  summarise(correlation = cor(prob_original, prob_personal, use = "complete.obs"))
-
-print(correlation_results)
-
-
-####do this on final_df bookmarked
-
-prob_final_df <- final_df %>%
-  filter(!is.na(bookmarked), !is.na(condition), !is.na(climate2))%>%
-  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2==4, NA, 'Denier')))%>%
-  group_by(denier, condition, item_nr) %>%
-  summarise(count = n(), bookmarked_sum = sum(bookmarked, na.rm = TRUE), .groups = 'drop') %>%
-  group_by(denier, condition) %>%
-  mutate(probability = bookmarked_sum / count) %>%
-  select(denier, condition, item_nr, probability) %>%
-  pivot_wider(names_from = condition, values_from = probability, values_fill = 0) %>%
-  rename(prob_original = `original`, prob_personal = `personal`)
-
-
-correlation_results <- prob_final_df %>%
-  group_by(denier) %>%
-  summarise(correlation = cor(prob_original, prob_personal, use = "complete.obs"))
-
-print(correlation_results)
-
-
-####do this on voted
-prob_final_df <- final_df %>%
-  filter(!is.na(vote), !is.na(condition), !is.na(climate2))%>%
-  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2==4, NA, 'Denier')))%>%
-  group_by(denier, condition, item_nr) %>%
-  summarise(count = n(), voted_sum = sum(vote, na.rm = TRUE), .groups = 'drop') %>%
-  group_by(denier, condition) %>%
-  mutate(probability = voted_sum / count) %>%
-  select(denier, condition, item_nr, probability) %>%
-  pivot_wider(names_from = condition, values_from = probability, values_fill = 0) %>%
-  rename(prob_original = `original`, prob_personal = `personal`)
-
-
-correlation_results <- prob_final_df %>%
-  group_by(denier) %>%
-  summarise(correlation = cor(prob_original, prob_personal, use = "complete.obs"))
-
-print(correlation_results)
-
-
-###analyse bookmark regrets, but only on headlines people upvoted and bookmarked so really wanted to see
-
-##do the two stats on upvoted and bookmarked headlines
-aggregated_data <- df2_clean %>%
-    filter(vote==1)%>%
-  filter( !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(bookmark_regret),
-    se_climate_figure = sd(bookmark_regret) / sqrt(n())
-  )
-
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="Bookmark-regret", 
-       x="Climate belief", 
-       y="Bookmark regret") +
-  theme_minimal()
-
-
-```
-
-
-
-```{r regret heterogeneity}
-
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$vote_difference, average_final_df$relevance)
-cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
-
-
-
-##now df regret measures
-
-
-average_df <- df %>%
-  group_by(item_nr, condition,climate2) %>%
-  summarise(
-    average_vote_regret = mean(upvote_regret, na.rm = TRUE),
-    average_bookmark_regret = mean(bookmark_regret_1, na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-# Pivot the data to wide format to separate the conditions
-average_wide_df <- average_df %>%
-  pivot_wider(
-    names_from = condition,
-    values_from = c(average_vote_regret, average_bookmark_regret),
-    names_prefix = "condition_"
-  )
-
-# Calculate the differences between the conditions
-average_diff_df <- average_wide_df %>%
+df <- df %>%
   mutate(
-    original_vote_regret_average = average_vote_regret_condition_original,
-    personal_vote_regret_average = average_vote_regret_condition_personal,
-    original_bookmark_regret_average = average_bookmark_regret_condition_original,
-    personal_bookmark_regret_average = average_bookmark_regret_condition_personal,
-    vote_difference = original_vote_regret_average - personal_vote_regret_average,
-    bookmark_difference = original_bookmark_regret_average - personal_bookmark_regret_average
+    NegativeOriginal = as.numeric(NegativeOriginal),
+    SensationalOriginal = as.numeric(SensationalOriginal),
+    EmotionalOriginal = as.numeric(EmotionalOriginal),
+    ConsistencyOriginal = as.numeric(ConsistencyOriginal),
+    MisleadingOriginal = as.numeric(MisleadingOriginal),
+    NegativeFlipped = as.numeric(NegativeFlipped),
+    SensationalFlipped = as.numeric(SensationalFlipped),
+    EmotionalFlipped = as.numeric(EmotionalFlipped),
+    ConsistencyFlipped = as.numeric(ConsistencyFlipped),
+    MisleadingFlipped = as.numeric(MisleadingFlipped)
   )
 
-# Select and rename the desired columns
-average_final_df <- average_diff_df %>%
-  select(
-    item_nr,
-    original_vote_regret_average,
-    personal_vote_regret_average,
-    vote_difference,
-    original_bookmark_regret_average,
-    personal_bookmark_regret_average,
-    bookmark_difference,
-    climate2
+df_long <- df %>%
+  pivot_longer(
+    cols = starts_with("Negative") | starts_with("Sensational") | starts_with("Emotional") | starts_with("Consistency")| starts_with("Misleading"),
+    names_to = c("Metric", "Type"),
+    names_pattern = "(Negative|Sensational|Emotional|Consistency|Misleading)(Original|Flipped)",
+    values_to = "Score"
   )
 
-average_final_df <- average_final_df%>%
-  left_join(diff_data, by = 'item_nr')%>%
-  left_join(response_relevance, by = "item_nr")%>%
-  filter(climate2==2|climate2==3)%>%
-  mutate(relevance = ifelse(relevance == 4, 0, 1))
-
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
-cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
-
-####nothing to see here on the regret side of things.
+t_test_results <- df_long %>%
+  pivot_wider(names_from = Type, values_from = Score, names_prefix = "Score_") %>%
+  group_by(Metric) %>%
+  summarize(
+    t_test = list(t.test(Score_Original, Score_Flipped, paired = TRUE) %>% tidy())
+  ) %>%
+  unnest(t_test)
+# Display results
+print(t_test_results)
 
 
 
-###heterogeneity on relevance
-cor.test(average_final_df$vote_difference, average_final_df$relevance)
-cor.test(average_final_df$bookmark_difference, average_final_df$relevance)
-
+# Create a box-scatterplot using ggplot2
+ggplot(df_long, aes(x = Type, y = Score, color = Type)) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_wrap(~ Metric, scales = "free_y") + # Facet by the metric
+  labs(
+    title = "Comparison of Original and Flipped Headlines",
+    x = "Type",
+    y = "Score"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 
 ```
+
+
+
+
