@@ -251,18 +251,18 @@ final_df = final_df %>%
   filter(climate2 == "Caused mostly by natural changes in the environment" | 
          climate2 == "None of the above because global warming isn’t happening")
 
-model1 = lmer(agreement_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+model1 = lmer(scale(agreement_rating) ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
 summary(model1)
 
-model1 = lmer(regret_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
-summary(model1)
-
-
-model1 = lmer(positive_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+model1 = lmer(scale(regret_rating) ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
 summary(model1)
 
 
-model1 = lmer(negative_rating ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+model1 = lmer(scale(positive_rating) ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
+summary(model1)
+
+
+model1 = lmer(scale(negative_rating) ~ absoluteheadline + (1|ProlificID) + (1|item_nr), data = final_df[final_df$entry_name!='selected_title_OriginDenier',], na.action=na.omit)
 summary(model1)
 
 
@@ -283,6 +283,19 @@ model1 = lmer(negative_rating ~ originheadline + (1|ProlificID) + (1|item_nr), d
 summary(model1)
 ```
 
+```{r demographics}
+
+demdata=read.csv('prolific_export_66605ab74751a7906966f7c0.csv', header=T)
+
+df2 = df %>%
+  left_join(demdata, by=c('porlific' = 'Participant.id'))
+table(df2$Sex)
+
+mean(as.numeric(df2$Age), na.rm=T)
+sd(as.numeric(df2$Age), na.rm=T)
+
+
+```
 
 ```{r item selection based on manipulation check}
 
