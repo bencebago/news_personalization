@@ -15,7 +15,7 @@ output: html_document
 </style>
 
 
-```{r package, include=FALSE}
+```{r package, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 library(tidyverse)
 library(lmerTest)
 library(ggplot2)
@@ -38,7 +38,7 @@ library(gridExtra)
 ```
 
 
-```{r management, include=FALSE}
+```{r management, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 column_names <- names(read.csv("personalization_social_media_June 28, 2024_05.24.csv", nrows = 1))
 
 df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
@@ -159,8 +159,8 @@ df = df%>%
         Education = ifelse(Educational.Level > 3, 1, -1),
         Partisanship = ifelse(DemRep_C < 4, DemRep_C-4, DemRep_C-3),
         partisan_identity = ifelse(Partisanship < 0, 'Democrat', 'Republican'),
-        Q6..Ideology_econ = ifelse(Q6..Ideology_econ < 4, Q6..Ideology_econ-4, Q6..Ideology_econ-3),
-        Q7..Ideology_social = ifelse(Q7..Ideology_social < 4, Q7..Ideology_social-4, Q7..Ideology_social-3),
+        Q6..Ideology_econ = ifelse(Q6..Ideology_econ == 6, 0, Q6..Ideology_econ-3),
+        Q7..Ideology_social = ifelse(Q7..Ideology_social == 6, 0, Q7..Ideology_social-3),
         Ideology = rowMeans(cbind(Q6..Ideology_econ, Q7..Ideology_social), na.rm = TRUE),
         Ideology=scale(Ideology),
         Partisanship=scale(Partisanship),
@@ -1790,4 +1790,85 @@ cat('<div class="page-break"></div>')
 htmltools::browsable(style)
 
 ```
+
+
+### Prior and Posterior Beliefs
+
+
+**Question:**
+
+> Recently, you may have noticed that global warming has been getting some attention in the news. Global warming refers to the idea that the world’s average temperature has been increasing over the past 150 years, may be increasing more in the future, and that the world’s climate may change as a result. What do you think: Do you think that global warming is happening?
+
+**Answer Options:**
+1. Yes  
+2. No  
+3. Don't know  
+
+**Question (categorical climate belief):**
+
+> Assuming global warming is happening, do you think it is… ?
+
+**Answer Options:**
+1. Caused mostly by human activities
+2. Caused mostly by natural changes in the environment 
+3. None of the above because global warming is not happening
+4. Other
+5. Don't know 
+
+**Question (belief that climate change is caused by human activity):**
+
+> What is the probability that climate change is primarily caused by human activity?
+[Scale of 0 (very unlikely) to 100 (very likely)]
+
+**Question (belief that climate change is happening):**
+
+> What is the probability that climate change is happening?
+[Scale of 0 (very unlikely) to 100 (very likely)]
+
+**Question (belief that climate change is a threat):**
+
+> How significant is the threat climate change poses to human safety, world and national economies or biodiversity?
+[Scale of 0 (not significant) to 100 (very significant)]
+
+
+### Ideology and Partisanship
+
+**Question (ideology on economic issues):**
+
+> In general, how would you describe your own political viewpoint on economic issues?
+
+**Answer Options:**
+1. Very liberal
+2. Liberal
+3. Moderate
+4. Conservative
+5. Very conservative
+6. Note sure
+
+**Question (ideology on social issues):**
+
+> In general, how would you describe your own political viewpoint on social issues?
+
+**Answer Options:**
+1. Very liberal
+2. Liberal
+3. Moderate
+4. Conservative
+5. Very conservative
+6. Note sure
+
+
+**Question (partisanship):**
+
+> Which of the following best describes your political preference?
+
+**Answer Options:**
+1. Strongly Democratic
+2. Democratic
+3. Lean Democratic
+4. Lean Republican
+5. Republican
+6. Strongly Republican
+
+
 
