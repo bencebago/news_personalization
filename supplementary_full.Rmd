@@ -1,6 +1,6 @@
 ---
 title: "Supplementary Information for Using Generative AI to Increase Skeptics' Engagement with Climate Science"
-author: "Bence Bago, Philippe Mueller, Jean-Francois Bonnefon"
+author: "Bence Bago, Philippe Muller, Jean-Francois Bonnefon"
 output: html_document
 
 ---
