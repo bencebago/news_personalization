@@ -376,7 +376,7 @@ summary(model1)
 model1=lmer(vote ~ climate_stat*condition_stat + (1|title)+ (1|prolific), data=data, na.action=na.omit)
 summary(model1)
 
-model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=data[data$prior_risk_1 < -24,],  na.action=na.omit)
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=data[data$prior_happen_1 < -24,],  na.action=na.omit)
 summary(model1)
 
 #Continuous measures
@@ -707,5 +707,50 @@ ggplot(df_long, aes(x = Type, y = Score, color = Type)) +
 ```
 
 
+```{r posterior analysis, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+ttest1=t.test(df$happen_change)
+ttest2=t.test(df$cause_change)
+ttest3=t.test(df$risk_change)
+
+df$prior=df$prior_happen_1
+model1=lmer(happen_change~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=df$prior_cause_1
+model2=lmer(cause_change~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+model3=lmer(risk_change~ I(prior^2) +prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+df$prior=df$prior_happen_1
+model1=lmer(happen_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=df$prior_cause_1
+model2=lmer(cause_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+df$prior=df$prior_risk_1
+model3=lmer(risk_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+df$prior=df$prior_happen_1
+model1=lmer(happen_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=df$prior_cause_1
+model2=lmer(cause_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+df$prior=df$prior_risk_1
+model3=lmer(risk_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+t.test(df[df$partisan_identity=='Republican',]$risk_change)
+t.test(df[df$partisan_identity=='Democrat',]$risk_change)
+
+```
 
 
