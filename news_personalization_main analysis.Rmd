@@ -6,6 +6,10 @@ output: pdf_document
 ---
 
 ```{r package, include=FALSE}
+library(renv)
+renv::restore()
+
+
 library(tidyverse)
 library(lmerTest)
 library(ggplot2)
@@ -117,9 +121,10 @@ final_df <- final_df %>%
 
 ## add columns to original dataset, most importantly climate change denier classification and statistics. 
 df = df%>%
-  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3|climate2==5, 'Denier', NA)),
-         climate_stat = ifelse(climate2==1, 1, ifelse(climate2==2|climate2==3, -1, 0)),
-         condition_stat = ifelse(condition=='original', 0, 1),
+  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3, 'Denier', NA)),
+         climate_stat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
+         condition_stat = ifelse(condition=='original', 0.5, -0.5),
+         Partisanship = ifelse(DemRep_C < 4, DemRep_C-4, DemRep_C-3),
          cause_change = prior_cause_1 - posterior_cause_1,
          risk_change = prior_risk_1 - posterior_risk_1,
          happen_change = prior_happen_1 - posterior_happen_1,
@@ -162,222 +167,20 @@ THen we have continuous prior belief measures of 3 type: happening, cause, risk 
 
 bookmark - vote: 1:Upvoted/bookmarked 0:downvoted/not bookmarked
 
-```{r graphs, echo=FALSE}
-aggregated_data <- final_df %>%
-  filter(type=='climate' & !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(vote),
-    se_climate_figure = sd(vote) / sqrt(n())
-  )
-
-# Create the bar graph with error bars
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="", 
-       x='Climate belief', 
-       y="Upvote (%)") +
-  theme_minimal()
-
-
-aggregated_data <- final_df %>%
-  filter(type=='climate' & !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(bookmarked),
-    se_climate_figure = sd(bookmarked) / sqrt(n())
-  )
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="Bookmark", 
-       x="Climate belief", 
-       y="Bookmarked (%)") +
-  theme_minimal()
-
-aggregated_data <- df %>%
-  filter( !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(credibility_1,na.rm=T),
-    se_climate_figure = sd(credibility_1,na.rm=T) / sqrt(n())
-  )
-
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="Bar Graph with Error Bars", 
-       x="Climate Belief", 
-       y="Credibility") +
-  theme_minimal()
-
-aggregated_data <- df %>%
-  filter( !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(bookmark_regret_1),
-    se_climate_figure = sd(bookmark_regret_1) / sqrt(n())
-  )
-
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="Bookmark-regret", 
-       x="Climate belief", 
-       y="Bookmark regret (LESS regret is higher number the scale is reversed)") +
-  theme_minimal()
-
-
-aggregated_data <- df %>%
-  filter( !is.na(condition) & !is.na(climate_figure))%>%
-  group_by(climate_figure, condition) %>%
-  summarise(
-    mean_climate_figure = mean(upvote_regret),
-    se_climate_figure = sd(upvote_regret) / sqrt(n())
-  )
-
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  labs(title="Vote-regret", 
-       x="Climate belief", 
-       y="New upvote (%)") +
-  theme_minimal()
-
-
-
-ggplot(aggregated_data, aes(x=climate_figure, y=mean_climate_figure, fill=condition)) +
-  geom_bar(stat="identity", position=position_dodge(), width=0.7) +
-  geom_errorbar(aes(ymin=mean_climate_figure - se_climate_figure, ymax=mean_climate_figure + se_climate_figure), 
-                width=0.2, 
-                position=position_dodge(0.7)) +
-  facet_wrap(~climate2) +
-  labs(title="Bar Graph with Error Bars", 
-       x="Belief", 
-       y="Happen") +
-  theme_minimal()
-
-p <- ggplot(final_df, aes(x=prior_risk_1, y=posterior_risk_1)) +
-  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
-  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") +  # Add the line of perfect correlation
-  labs(title="Likelihood of climate change having harmful consequences for humanity",
-       x="Prior Risk",
-       y="Posterior Risk") +
-  theme_minimal()
-print(p)
-
-
-p <- ggplot(final_df, aes(x=prior_cause_1, y=posterior_cause_1)) +
-  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
-  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") +  # Add the line of perfect correlation
-  labs(title="Likelihood of climate change caused by human activity",
-       x="Prior Cause",
-       y="Posterior Cause") +
-  theme_minimal()
-print(p)
-
-p <- ggplot(final_df, aes(x=prior_happen_1, y=posterior_happen_1)) +
-  geom_smooth(method=lm, se=FALSE, color="blue") +  # Add the abline (regression line)
-  geom_abline(slope=1, intercept=50, color="red", linetype="dashed") + 
-  labs(title="Likelihood of climate change happening",
-       x="Prior Happen",
-       y="Posterior Happen") +
-  theme_minimal()
-
-print(p)
-
-
-
-
-```
 
 
 ```{r engagement analysis, echo=FALSE}
-table(df$climate2)
-#is there belief updating?
-t.test(df[df$condition=='original',]$prior_cause_1, df[df$condition=='original',]$posterior_cause_1, paired=TRUE)
-t.test(df[df$condition=='personal',]$prior_cause_1, df[df$condition=='personal',]$posterior_cause_1, paired=TRUE)
-
-t.test(df[df$condition=='original',]$prior_happen_1, df[df$condition=='original',]$posterior_happen_1, paired=TRUE)
-t.test(df[df$condition=='personal',]$prior_happen_1, df[df$condition=='personal',]$posterior_happen_1, paired=TRUE)
-
-t.test(df[df$condition=='original',]$prior_risk_1, df[df$condition=='original',]$posterior_risk_1, paired=TRUE)
-t.test(df[df$condition=='personal',]$prior_risk_1, df[df$condition=='personal',]$posterior_risk_1, paired=TRUE)
-
-quantile(df$prior_happen_1,na.rm=T)
-quantile(df$prior_cause_1, na.rm=T)
-quantile(df$prior_risk_1, na.rm=T)
-
-
-# Create a function to count the number of data points within the specified ranges
-count_ranges <- function(x) {
-  c(
-    sum(x >= -50 & x <= -25, na.rm=T),
-    sum(x >= -24 & x <= 0,na.rm=T),
-    sum(x >= 1 & x <= 25,na.rm=T),
-    sum(x >= 26 & x <= 50,na.rm=T)
-  )
-}
-
-# Apply the function to each variable and create a table
-result_table <- data.frame(
-  Range = c("[-50, -25]", "[-24, 0]", "[1, 25]", "[26, 50]"),
-  prior_happen_1 = count_ranges(df$prior_happen_1),
-  prior_risk_1 = count_ranges(df$prior_risk_1),
-  prior_cause_1 = count_ranges(df$prior_cause_1)
-)
-
-# Print the result table
-print(result_table)
-
-##condition has an effect on posteriors?
-model1=lmer(posterior_happen_1 ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
-model1=lmer(posterior_cause_1 ~ condition + (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
-model1=lmer(posterior_risk_1 ~ condition + (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
-
-model1=lmer(cause_change ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
-model1=lm(happen_change ~ condition, data=df, na.action=na.omit)
-summary(model1)
-
-model1=lmer(risk_change ~ condition+ (1|selectedValue), data=df, na.action=na.omit)
-summary(model1)
-
 
 #preregistered analysis
 data= final_df[final_df$type=='climate',]
 
+#categorical measures
 model1=lmer(bookmarked ~ condition_stat*climate_stat + (1|title)+ (1|prolific), data=data, na.action=na.omit)
 summary(model1)
-
 
 model1=lmer(vote ~ climate_stat*condition_stat + (1|title)+ (1|prolific), data=data, na.action=na.omit)
 summary(model1)
 
-model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=data[data$prior_happen_1 < -24,],  na.action=na.omit)
-summary(model1)
 
 #Continuous measures
 model1=lmer(bookmarked ~ condition_stat*scale(prior_happen_1) + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate',], na.action=na.omit)
@@ -446,10 +249,8 @@ summary(model1)
 model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > 24,,], na.action=na.omit)
 summary(model1)
 
-cor.test(final_df$vote, final_df$bookmarked)
 
 ```
-
 
 
 ```{r backfire analysis, echo=FALSE}
@@ -459,27 +260,16 @@ df2 <- df %>%
             by = c("selectedValue" = "title", "prolific" = "prolific"))%>%
   mutate(voteregret = ifelse(vote==1 & upvote_regret==1, '11', ifelse(vote==1 & upvote_regret==0, '10', ifelse(vote==0 & upvote_regret==1, '01', '00'))))
 
-mean(df2[df2$condition=='personal' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$upvote_regret, na.rm=T)-
-mean(df2[df2$condition=='personal' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$vote, na.rm=T)
 
-mean(df2[df2$condition=='original' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$upvote_regret, na.rm=T)-
-mean(df2[df2$condition=='original' & (df2$climate2==2|df2$climate2==3|df2$climate2==5),]$vote, na.rm=T)
-
-
-mean(df2[df2$condition=='personal' & (df2$climate2==1),]$upvote_regret, na.rm=T)-
-mean(df2[df2$condition=='personal' & (df2$climate2==1),]$vote, na.rm=T)
-
-mean(df2[df2$condition=='original' & (df2$climate2==1),]$upvote_regret, na.rm=T)-
-mean(df2[df2$condition=='original' & (df2$climate2==1),]$vote, na.rm=T)
 
 
 df2_clean <- df2 %>%
   filter(!is.na(voteregret), !is.na(condition), !is.na(climate2))%>%
-  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2==4, NA, 'Denier')),
-  believerstat = ifelse(climate2==1, 1, ifelse(climate2==2|climate2==3, -1, 0)),
+  mutate(denier = ifelse(climate2==1, 'Believer', ifelse(climate2 %in% c(4,5), NA, 'Denier')),
+  believerstat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
   change = ifelse(voteregret == '01' | voteregret== '10', 'Vote regretted', 'Vote NOT regretted'),
   statchange =ifelse(change=='Vote regretted', 1,0),
-  conditionstat = ifelse(condition == 'original',0,1),
+  conditionstat = ifelse(condition == 'original',0.5,-0.5),
   bookmark_regret = 100-bookmark_regret_1)
 
 # Create a contingency table
@@ -651,105 +441,63 @@ rm(list = setdiff(ls(), c("df", "final_df", 'average_final_df')))
 ```
 
 
-```{r headline linguistic analysis}
-df <- read_excel('headlines_analysis_clickbait.xlsx')
-
-df <- df %>%
-  mutate(
-    NegativeOriginal = as.numeric(NegativeOriginal),
-    SensationalOriginal = as.numeric(SensationalOriginal),
-    EmotionalOriginal = as.numeric(EmotionalOriginal),
-    ConsistencyOriginal = as.numeric(ConsistencyOriginal),
-    MisleadingOriginal = as.numeric(MisleadingOriginal),
-    NegativeFlipped = as.numeric(NegativeFlipped),
-    SensationalFlipped = as.numeric(SensationalFlipped),
-    EmotionalFlipped = as.numeric(EmotionalFlipped),
-    ConsistencyFlipped = as.numeric(ConsistencyFlipped),
-    MisleadingFlipped = as.numeric(MisleadingFlipped)
-  )
-
-df_long <- df %>%
-  pivot_longer(
-    cols = starts_with("Negative") | starts_with("Sensational") | starts_with("Emotional") | starts_with("Consistency")| starts_with("Misleading"),
-    names_to = c("Metric", "Type"),
-    names_pattern = "(Negative|Sensational|Emotional|Consistency|Misleading)(Original|Flipped)",
-    values_to = "Score"
-  )
-
-t_test_results <- df_long %>%
-  pivot_wider(names_from = Type, values_from = Score, names_prefix = "Score_") %>%
-  group_by(Metric) %>%
-  summarize(
-    t_test = list(t.test(Score_Original, Score_Flipped, paired = TRUE) %>% tidy())
-  ) %>%
-  unnest(t_test)
-# Display results
-print(t_test_results)
-
-
-
-# Create a box-scatterplot using ggplot2
-ggplot(df_long, aes(x = Type, y = Score, color = Type)) +
-  geom_boxplot(alpha = 0.5) +
-  geom_jitter(width = 0.2, alpha = 0.7) +
-  facet_wrap(~ Metric, scales = "free_y") + # Facet by the metric
-  labs(
-    title = "Comparison of Original and Flipped Headlines",
-    x = "Type",
-    y = "Score"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-
-
-```
-
-
 ```{r posterior analysis, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 
 ttest1=t.test(df$happen_change)
 ttest2=t.test(df$cause_change)
 ttest3=t.test(df$risk_change)
 
-df$prior=df$prior_happen_1
-model1=lmer(happen_change~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change)~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
 summary(model1)
 
-df$prior=df$prior_cause_1
-model2=lmer(cause_change~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change)~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
 summary(model2)
 
-model3=lmer(risk_change~ I(prior^2) +prior + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change)~ I(prior^2) +prior + (1|selectedValue), data=df, na.action=na.omit)
 summary(model3)
 
-df$prior=df$prior_happen_1
-model1=lmer(happen_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
 summary(model1)
 
-df$prior=df$prior_cause_1
-model2=lmer(cause_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
 summary(model2)
 
-df$prior=df$prior_risk_1
-model3=lmer(risk_change ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
 summary(model3)
 
-df$prior=df$prior_happen_1
-model1=lmer(happen_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
 summary(model1)
 
-df$prior=df$prior_cause_1
-model2=lmer(cause_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
 summary(model2)
 
-df$prior=df$prior_risk_1
-model3=lmer(risk_change ~ Partisanship + (1|selectedValue), data=df, na.action=na.omit)
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
 summary(model3)
 
 t.test(df[df$partisan_identity=='Republican',]$risk_change)
 t.test(df[df$partisan_identity=='Democrat',]$risk_change)
+
+
+t.test(df[df$condition=='original',]$prior_cause_1, df[df$condition=='original',]$posterior_cause_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_cause_1, df[df$condition=='personal',]$posterior_cause_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_happen_1, df[df$condition=='original',]$posterior_happen_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_happen_1, df[df$condition=='personal',]$posterior_happen_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_risk_1, df[df$condition=='original',]$posterior_risk_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_risk_1, df[df$condition=='personal',]$posterior_risk_1, paired=TRUE)
+
+
+
 
 ```
 

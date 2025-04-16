@@ -16,7 +16,7 @@ library(httr)
 
 
 # Read the CSV file with the appropriate delimiter
-column_names <- names(read.csv("personalization_pretest_June 6, 2024_13.25.csv", nrows = 1))
+column_names <- names(read.csv("personalization_pretest_June 6, 2024_21.29.csv", nrows = 1))
 
 df <- read.csv("personalization_pretest_June 6, 2024_21.29.csv", sep=",", skip = 79, header = FALSE)
 

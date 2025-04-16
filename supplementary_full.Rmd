@@ -16,6 +16,10 @@ output: html_document
 
 
 ```{r package, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+#library(renv)
+#::restore()
+#for reproducibility purposes, version control.
+
 library(tidyverse)
 library(lmerTest)
 library(ggplot2)
@@ -35,12 +39,14 @@ library(sjPlot)
 library(jsonlite)
 library(dplyr)
 library(gridExtra)
+library(kableExtra)
 ```
 
 
 ```{r management, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 column_names <- names(read.csv("personalization_social_media_June 28, 2024_05.24.csv", nrows = 1))
 
+#downloaded Qualtrics file
 df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
 
 names(df) <- column_names
@@ -122,22 +128,13 @@ json_data <- fromJSON(url)
 json_titles <-  c(json_data$title, json_data$selected_title_AbsoluteDenier)
 
 
-# Assuming final_df is already created as per previous steps
-# Create a new variable 'type' in final_df
 final_df <- final_df %>%
   mutate(type = ifelse(title %in% json_titles, 'climate', 'neutral'))
 
-##from original json I i should add the index for each each title for item nr that will be used for joining with the different datasets. 
-
-
-####some analysis will be run on original dataset, like posterior analysis
-
-
-## add columns to original dataset, most importantly climate change denier classification and statistics. 
 df = df%>%
-  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3|climate2==5, 'Denier', NA)),
-         climate_stat = ifelse(climate2==1, 1, ifelse(climate2==2|climate2==3, -1, 0)),
-         condition_stat = ifelse(condition=='original', 0, 1),
+  mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3, 'Denier', NA)),
+         climate_stat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
+         condition_stat = ifelse(condition=='original', 0.5, -0.5),
          cause_change = prior_cause_1 - posterior_cause_1,
          risk_change = prior_risk_1 - posterior_risk_1,
          happen_change = prior_happen_1 - posterior_happen_1,
@@ -202,7 +199,7 @@ rm(list = setdiff(ls(), c("df", "final_df", 'df2_clean_vote')))
 
 
 ## Note on coding
-Here, we report standardized beta coefficients. All continuous variables were scaled and centered (including partisanship, ideology, interest in science news, credibility, bookmark regret, age, continuous priors on climate change). The experimental Treatment variable was dummy coded (0 - Original headlines, 1 - Flipped headlines),  while the rest of the demographic variables were sum coded to aid interpretability of the results as they do not have natural reference levels (Education: 1 - Collage or higher, -1 - Less than collage; Sex: 1 - Male, -1 - Female; Categorical climate belief: 1 - Believer, 0 - Other or don't know, -1: Denier). Votes and bookmarks were always dependent variables, and were coded as 0 (downvoted, not bookmarked) or 1 (upvoted, bookmarked). Models that had votes or bookmarks as dependent variables always included titles and IDs as random intercepts, while models that predicted credibility or regret always included titles as random intercepts (there were no variation on the individual level as all participants had only one rating in these metrics). 
+Here, we report standardized beta coefficients. All continuous variables were scaled and centered (including partisanship, ideology, interest in science news, credibility, bookmark regret, age, continuous priors on climate change). The experimental Treatment variable was coded as 0.5 - Original headlines, -0.5 - Flipped headlines,  while the rest of the demographic variables were sum coded to aid interpretability of the results as they do not have natural reference levels (Education: 1 - College or higher, -1 - Less than college; Sex: 1 - Male, -1 - Female; Categorical climate belief: 0.5 - Believer, 0 - Other or don't know, -0.5: Skeptic). Votes and bookmarks were always dependent variables, and were coded as 0 (downvoted, not bookmarked) or 1 (upvoted, bookmarked). Models that had votes or bookmarks as dependent variables always included titles and IDs as random intercepts, while models that predicted credibility or regret always included titles as random intercepts (there were no variation on the individual level as all participants had only one rating in these metrics). 
 
 ## Preregistered analysis on engagement
 
@@ -222,36 +219,6 @@ model3_bookmark <- lmer(bookmarked ~ prior_cause_1 *  condition_stat + (1 | titl
 model4_bookmark <- lmer(bookmarked ~ prior_risk_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, na.action = na.omit)
 
 
-filtered_data <- final_df_filtered %>%
-  filter(climate2 %in% c(2, 3))
-
-# Calculate the percentage of people who voted (vote == 1) in both control and treatment groups
-vote_control <- filtered_data %>%
-  filter(condition_stat == 0) %>%
-  summarise(percent_voted = mean(vote) * 100) %>%
-  pull(percent_voted)
-
-vote_treatment <- filtered_data %>%
-  filter(condition_stat == 1) %>%
-  summarise(percent_voted = mean(vote) * 100) %>%
-  pull(percent_voted)
-
-# Calculate the percentage increase in voting between the control and treatment groups
-percentage_increase <- ((vote_treatment - vote_control) / vote_control) * 100
-
-
-bookmarked_control <- filtered_data %>%
-  filter(condition_stat == 0) %>%
-  summarise(percent_bookmarkedd = mean(bookmarked) * 100) %>%
-  pull(percent_bookmarkedd)
-
-bookmarked_treatment <- filtered_data %>%
-  filter(condition_stat == 1) %>%
-  summarise(percent_bookmarkedd = mean(bookmarked) * 100) %>%
-  pull(percent_bookmarkedd)
-
-# Calculate the percentage increase in voting between the control and treatment groups
-percentage_increase_bookmarked <- ((bookmarked_treatment - bookmarked_control) / bookmarked_control) * 100
 
 
 
@@ -271,6 +238,7 @@ style <- htmltools::tags$style(HTML("
 "))
 
 pred_labels <- c('Intercept', "Prior",  "Treatment",  "Prior * Treatment")
+cat('<div class="page-break"></div>')
 
 
 tab_model(model1_vote, model1_bookmark,
@@ -284,6 +252,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical prior belief, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 
@@ -298,7 +267,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -312,13 +281,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S4. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S4. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -326,16 +295,107 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
 
 ```
 
+## Distribution of responses on categorical prior belief measure
+```{r engagement analysis per categorical variable, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 
-### Engagement analysis on extreme skeptics/believers
-To explore (post hoc) the impact of modified headlines as a function of initial climate skepticism, we analyzed the treatment effect in four subgroups defined by 4 different levels of skepticism, for each of 3  continuous measures of skepticism (i.e., 0-25, 26-50, 51-75, 76-100), that showed the highest effects both for votes and bookmarks among the most skeptical audiences in the belief that climate change is happening (vote : $b = 0.168$, $p = .01$, bookmark: $b = 0.09$, $p = .142$), that is caused by human activity (vote : $b = 0.14$, $p = .01$, bookmark: $b = 0.1$, $p = .054$) and that it is a significant threat (vote : $b = 0.17$, $p = .004$, bookmark: $b = 0.11$, $p = .051$). 
-% The treatment is the least effective among the most believers in the belief that climate change is happening (vote : $b = 0.01$, $p = .619$, bookmark: $b = -0.03$, $p = .378$), that is caused by human activity (vote : $b = -0.001$, $p = .960$, bookmark: $b = -0.05$, $p = .168$) and that it is a significant threat (vote : $b = 0.01$, $p = .717$, bookmark: $b = -0.04$, $p = .282$), whereas higher positive beta means higher treatment effect. 
+
+final_df_filtered = final_df %>%
+  filter(type == 'climate')
+
+model1_vote <- lmer(vote ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(2,3),], na.action = na.omit)
+#summary(model1_vote)
+
+model1_bookmark <- lmer(bookmarked ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(2,3),], na.action = na.omit)
+#summary(model1_bookmark)
+
+
+id_counts<-final_df_filtered%>%
+  group_by(climate2) %>%
+  summarise(unique_prolificIDs = n_distinct(prolific))
+
+```
+
+Participants had to answer the question: 'Assuming climate change is happening, do you think it is...?', and select a response from 5 options. In total, `r id_counts$unique_prolificIDs[id_counts$climate2 == 1]` people selected 'Caused mostly by human activities', `r id_counts$unique_prolificIDs[id_counts$climate2 == 2]` people selected 'Caused mostly by natural changes in the environment', `r id_counts$unique_prolificIDs[id_counts$climate2 == 3]` people selected 'None of the above because global warming is not happening', `r id_counts$unique_prolificIDs[id_counts$climate2 == 4]` people selected 'Other' and `r id_counts$unique_prolificIDs[id_counts$climate2 == 5]` people selected 'Don't know'. 
+
+When restricting analysis to skeptics (as per the categorical variable) we find a significant treatment effect on upvotes ($b = -0.1, p = 0.014$), but not on bookmarks ($b = -0.06, p = 0.157$). This analysis is exploratory since the preregistered outcome of interest was the interaction effect between belief and treatment. A post-hoc power analysis suggested that we would have needed about 1,000 skeptics to detect the $b = -0.06$ effect size on bookmarks with a 95\% power. We conducted a siulation based power analysis, for which we used the parameters (standard errors, beta) from the corresponding model. 
+
+```{r power analysis, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+
+
+
+# SDs are taken from model1_bookmark
+prolific_sd <- 0.078
+title_sd <- 0.154
+resid_sd <- 0.468
+
+n_items_total <- 56
+n_items_per_subj <- 10
+n_subj <- 1000
+b_treat <- 0.06
+
+run_sim <- function() {
+  subj_ids <- 1:n_subj
+  item_ids <- 1:n_items_total
+  
+  # Assign treatment randomly across subjects
+  treatment_df <- tibble(
+    subject = subj_ids,
+    treatment = rbinom(n_subj, 1, 0.5)
+  )
+  
+  # Randomly assign 11 items to each subject
+  subject_item_df <- treatment_df %>%
+    rowwise() %>%
+    mutate(items = list(sample(item_ids, n_items_per_subj))) %>%
+    unnest(items) %>%
+    rename(item = items)
+  
+  # Simulate random intercepts
+  subj_re <- rnorm(n_subj, 0, prolific_sd)
+  item_re <- rnorm(n_items_total, 0, title_sd)
+  
+  df <- subject_item_df %>%
+    mutate(
+      subj_intercept = subj_re[subject],
+      item_intercept = item_re[item],
+      error = rnorm(n(), 0, resid_sd),
+      bookmark_prob = 0.43 + b_treat * treatment + subj_intercept + item_intercept + error,
+      bookmark_prob = pmin(pmax(bookmark_prob, 0), 1),
+      bookmark = rbinom(n(), 1, bookmark_prob)
+    )
+  
+  # Fit model
+  model <- lmer(bookmark ~ treatment + (1 | subject) + (1 | item), data = df)
+  pval <- summary(model)$coefficients["treatment", "Pr(>|t|)"]
+  beta <- fixef(model)["treatment"]
+  
+  return(tibble(pval = pval, beta = beta))
+}
+
+# Run simulation 1000 times to estimate power
+set.seed(42)
+n_sim <- 1000
+results <- map_dfr(1:n_sim, ~run_sim())
+
+power_estimate <- mean(results$pval < 0.05)
+mean_beta <- mean(results$beta)
+
+#cat("Estimated power:", round(power_estimate, 3), "\n")
+#cat("Mean estimated beta:", round(mean_beta, 3), "\n")
+
+```
+
+
+## Engagement analysis on extreme skeptics/believers
+To explore (post hoc) the impact of modified headlines as a function of initial climate skepticism, we analyzed the treatment effect in four subgroups defined by 4 different levels of skepticism, for each of 3  continuous measures of skepticism (i.e., 0-25, 26-50, 51-75, 76-100), that showed the highest effects both for votes and bookmarks among the most skeptical audiences in the belief that climate change is happening (vote : $b = -0.168$, $p = .01$, bookmark: $b = -0.09$, $p = .142$), that is caused by human activity (vote : $b = -0.14$, $p = .01$, bookmark: $b = -0.1$, $p = .054$) and that it is a significant threat (vote : $b = -0.17$, $p = .004$, bookmark: $b = -0.11$, $p = .051$). 
+% The treatment is the least effective among the most believers in the belief that climate change is happening (vote : $b = -0.01$, $p = .619$, bookmark: $b = 0.03$, $p = .378$), that is caused by human activity (vote : $b = 0.001$, $p = .960$, bookmark: $b = 0.05$, $p = .168$) and that it is a significant threat (vote : $b = -0.01$, $p = .717$, bookmark: $b = 0.04$, $p = .282$), whereas higher positive beta means higher treatment effect. 
 
 
 ## Replication of Engagement effects with inattention exclusions
@@ -388,6 +448,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical prior belief, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 
@@ -402,7 +463,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -416,13 +477,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S8. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S8. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -430,6 +491,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a trheat, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -443,7 +505,7 @@ We found that the treatment increased skeptics regret over bookmarking climate c
 
 For this, we used Llama3 -70B to rate articles on their sentimentality with the following prompt, taken from Rathje et al (2024): _'How negative or positive is this article on a 1 to 7 scale?  Answer only with a number, with 1  being “very  negative” and 7 being “very  positive.” Here is the article: [Article text]'_
 
-Tables S9-S10 summarize the results. We conducted this analysis using the dichotomous prior and the continuous prior on the belief that climate change is caused by human activity, as we found evidence for decreased regret among skeptics in the treatment condition only in these 2 measures. Indeed, we found evidence that one sentimentality score, as rated by Llama3, included in the regression, treatment condition no longer significantly interact with prior beliefs, while sentimentality does interact with prior beliefs significantly. This supports our suspicion that negativity of the article texts makes skeptics experience negative emotions that make them later regret their choice. Neverthless, the interpretation of this analysis is speculative and should be treated as such. Importantly, as it can be seen in the analysis of the posterior beliefs or the perceived credibility of the article this increased regret in the modified headline condition does not translate to decreased belief updating nor a decrease in judgments of credibility.
+Tables S9-S10 summarize the results. We conducted this analysis using the dichotomous prior and the continuous prior on the belief that climate change is caused by human activity, as we found evidence for decreased regret among skeptics in the treatment condition only in these 2 measures. Indeed, we found evidence that one sentimentality score, as rated by Llama3, included in the regression, treatment condition no longer significantly interact with prior beliefs, while sentimentality does interact with prior beliefs significantly. This supports our suspicion that negativity of the article texts makes skeptics experience negative emotions that make them later regret their choice. Nevertheless, the interpretation of this analysis is speculative and should be treated as such. Importantly, as it can be seen in the analysis of the posterior beliefs or the perceived credibility of the article this increased regret in the modified headline condition does not translate to decreased belief updating nor a decrease in judgments of credibility.
 
 
 ```{r tables for sentimentality, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
@@ -498,6 +560,7 @@ style <- htmltools::tags$style(HTML("
 
 pred_labels <- c('Intercept', "Sentiment", 'Treatment', "Prior", "Sentiment * Treatment", "Prior * Sentiment", "Treatment * Prior", "Prior * Sentiment * Treatment")
 
+cat('<div class="page-break"></div>')
 
 tab_model(model1,
           dv.labels = c("Bookmark regret"),          
@@ -510,7 +573,7 @@ tab_model(model1,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, Llama rated sentiment of the article and all their interactions. DV is bookmark regret.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2,
@@ -524,7 +587,7 @@ tab_model(model2,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, Llama rated sentiment of the article and all their interactions. DV is bookmark regret.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -533,7 +596,79 @@ htmltools::browsable(style)
 
 
 ## Belief updating
-First, we tested whether people updated their beliefs about climate change toward the scientific consensus as a result of having red one article on climate change. This we found in all 3 of our continuous belief measures: on the belief climate change is happening $t (1998) = -6.3, p < .001$, Mean difference $= -1.2$, $95% CI = [-1.58, -0.83]$, on the belief that climate change is caused by human activity, $t (1998) = -5.44, p < .001$, Mean difference $= -1.15$, 95% CI $= [-1.57, -0.74]$ and also on the belief that climate change is a threat, $t (1998) = -13.0, p < .001$, Mean difference $= -2.36$, 95% CI $= [-2.72, -2.0]$. Second, we also tested whether updating was higher in the treatment or in the modified headline condition and whether updating was affected by priors. Updating was defined by prior-posterior for all people, so negative values mean higher updating toward the scientific consensus.
+First, we tested whether people updated their beliefs about climate change toward the scientific consensus as a result of having red one article on climate change. This we found in all 3 of our continuous belief measures: on the belief climate change is happening $t (1998) = -6.3, p < .001$, Mean difference $= -1.2$, $95% CI = [-1.58, -0.83]$, on the belief that climate change is caused by human activity, $t (1998) = -5.44, p < .001$, Mean difference $= -1.15$, $95% CI = [-1.57, -0.74]$ and also on the belief that climate change is a threat, $t (1998) = -13.0, p < .001$, Mean difference $= -2.36$, $95% CI = [-2.72, -2.0]$. Second, we also tested whether updating was higher in the treatment or in the modified headline condition and whether updating was affected by priors. Updating was defined by prior-posterior for all people, so negative values mean higher updating toward the scientific consensus.
+
+We find no credible evidence that the persuasion effect was affected by the treatment in any of the three measures; climate change is happening; $b = -0.07, p = .095$; climate change is caused by human activity; $b = 0.04, p = .420$; climate change is threat; $b = -0.08, p = .0824$). We also found no credible evidence for the persuasion effect was affected by partisanship for belief that climate change is happening ($b = -0.04, p = 0.098$) and for the belief that climate change is caused by human activity ($b = -0.03, p = .123$), although Democrats updated to a smaller extent about the threat posed by climate change than Republicans ($b = -0.08, p < .001$; Democrats: $t (1146) = -1.81, p < .001$, Mean change = $-1.81 [-2.26, -1.36]$, Republicans: $t (851) = -10, p  < .001,$ Mean Change =$-3.11 [-3.69, -2.53]$). 
+Finally, consistently with the literature, we did find that the most extreme skeptics are harder to persuade on the measures that climate change is caused by human activity (linear relationship: $b = 0.26, p < .001$; quadratic relationship: $b = 0.11, p < .001$) and that climate change is a threat (linear relationship: $b = 0.44, p < .001$; quadratic relationship: $b = 0.20, p < .001$). On the belief that climate change is caused by human activity the relationship between prior and belief change was linearly increasing such that belief change was highest for the most skeptical of audiences ($b = 0.24, p < .001$, and not the quadratic effect, $b = 0.008, p = .636$). 
+
+
+## Linguistic analysis on article headlines
+
+We also conducted a lingusitic analysis using Llama 3 70B to rate both original and modified headlines on several measures often associated with clickbaits; negativity, sensationality, emotionality as well as how misleading they are (given the contents of the article), and how consistent are they with the beliefs of people who are skeptic over climate change.
+When comparing these ratings, we found that original headlines were deemed more negative $t(27) = 2.62, p = .014$ and sensational $t(27) = 3.31, p = .003$, while modified headlines were deemed more consistent with the beliefs of climate skeptics $t(27) = -4.71, p < .0001$. We found no difference in the headlines misleadingness, $t(27)= 0.58, p = .565$, nor in their emotionality $t(27) = 1.23, p = .227$.
+We used the following prompts:
+Negativity: _"How negative is this headline? Report a number from 1 (absolutely NOT negative) to 10 (very negative), but nothing else: "_
+Sensationalist: _"How sensationalist is this headline? Report a number from 1 (absolutely NOT sensationalist) to 10 (very sensationalist), but nothing else: "_
+Emotional: _"How emotional is this headline? Report a number from 1 (absolutely NOT emotional) to 10 (very emotional), but nothing else: "_
+Consistency: _"How consistent this headline is with the beliefs of climate skeptics? Report a number from 1 (absolutely inconsistent) to 10 (absolutely consistent), but nothing else: "_
+Misleading: _"How misleading or vague this title is given the full text of the article? Report a number from 1 (absolutely NOT misleading or vague) to 10 (absolutely misleading or vague), but nothing else. Title: "_
+
+
+
+```{r headline linguistic analysis, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
+df <- read_excel('headlines_analysis_clickbait.xlsx')
+
+df <- df %>%
+  mutate(
+    NegativeOriginal = as.numeric(NegativeOriginal),
+    SensationalOriginal = as.numeric(SensationalOriginal),
+    EmotionalOriginal = as.numeric(EmotionalOriginal),
+    ConsistencyOriginal = as.numeric(ConsistencyOriginal),
+    MisleadingOriginal = as.numeric(MisleadingOriginal),
+    NegativeFlipped = as.numeric(NegativeFlipped),
+    SensationalFlipped = as.numeric(SensationalFlipped),
+    EmotionalFlipped = as.numeric(EmotionalFlipped),
+    ConsistencyFlipped = as.numeric(ConsistencyFlipped),
+    MisleadingFlipped = as.numeric(MisleadingFlipped)
+  )
+
+df_long <- df %>%
+  pivot_longer(
+    cols = starts_with("Negative") | starts_with("Sensational") | starts_with("Emotional") | starts_with("Consistency")| starts_with("Misleading"),
+    names_to = c("Metric", "Type"),
+    names_pattern = "(Negative|Sensational|Emotional|Consistency|Misleading)(Original|Flipped)",
+    values_to = "Score"
+  )
+library(broom)
+t_test_results <- df_long %>%
+  pivot_wider(names_from = Type, values_from = Score, names_prefix = "Score_") %>%
+  group_by(Metric) %>%
+  summarize(
+    t_test = list(t.test(Score_Original, Score_Flipped, paired = TRUE) %>% tidy())
+  ) %>%
+  unnest(t_test)
+# Display results
+print(t_test_results)
+
+
+
+# Create a box-scatterplot using ggplot2
+ggplot(df_long, aes(x = Type, y = Score, color = Type)) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(width = 0.2, alpha = 0.7) +
+  facet_wrap(~ Metric, scales = "free_y") + # Facet by the metric
+  labs(
+    title = "Comparison of Original and Flipped Headlines",
+    x = "Type",
+    y = "Score"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+```
 
 
 ## Participant level heterogeneity on Engagement
@@ -581,7 +716,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, age and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -595,7 +730,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, age and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -609,13 +744,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, age and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S14. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S14. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -623,6 +758,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, age and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -670,7 +806,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, education and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -684,7 +820,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, education and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -698,13 +834,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, education and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S18. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S18. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -712,6 +848,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, education and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -759,7 +896,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, sex and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -773,7 +910,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, sex and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -787,13 +924,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, sex and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S22. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S22. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -801,6 +938,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, sex and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -848,7 +986,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, partisanship and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -862,7 +1000,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, partisanship and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -876,13 +1014,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, partisanship and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S26. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S26. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -890,6 +1028,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, partisanship and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -900,7 +1039,6 @@ Importantly, we find significant heterogeneity over partisanship for bookmarks a
 
 ```{r graph for partisanship, fig.cap="Figure S2: Logistic regression plots for upvote and bookmark probability over partisanship", echo=FALSE, warning=FALSE, message=FALSE, results='asis',  out.width="100%"}
 
-# Preprocess data to classify Republicans and Democrats
 data <- final_df %>%
   filter(type=='climate')%>%
   mutate(
@@ -909,7 +1047,6 @@ data <- final_df %>%
   drop_na( vote, bookmarked,partisan_identity, headline_type)
 
 
-# Define a function to create the plot for each belief variable and response variable
 plot_logistic_regression <- function(belief_var, response_var, y_label, x_label) {
   ggplot(data, aes_string(x = belief_var, y = response_var, color = "headline_type")) +
     stat_smooth(method = "lm", se = TRUE) +
@@ -922,8 +1059,8 @@ plot_logistic_regression <- function(belief_var, response_var, y_label, x_label)
     ) +
     facet_wrap(~ partisan_identity) +
     scale_color_manual(values = c("Modified" = "orange", "Original" = "black")) +
-    scale_x_continuous(limits = c(0, 100)) +  # Set consistent x-axis limits
-    coord_cartesian(ylim = c(0.2, 0.8))       # Set visible y-axis range without removing data
+    scale_x_continuous(limits = c(0, 100)) + 
+    coord_cartesian(ylim = c(0.2, 0.8))       
 }
 
 # Generate plots for each combination of belief variable and response variable
@@ -935,6 +1072,7 @@ p5 <- plot_logistic_regression("prior_risk_unscaled", "vote", "Probability of up
 p6 <- plot_logistic_regression("prior_risk_unscaled", "bookmarked", "Probability of bookmark", 'Belief that climate change is a threat')
 
 knitr::include_graphics("partisanship.png")
+cat('<div class="page-break"></div>')
 
 
 ```
@@ -981,7 +1119,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, ideology and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -995,7 +1133,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, ideology and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -1009,13 +1147,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, ideology and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S30. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S30. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1023,6 +1161,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, ideology and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1071,7 +1210,7 @@ tab_model(model1_vote, model1_bookmark,
           show.icc = FALSE,    
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, interest in science news and all their interactions. DV is either bookmark or vote.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_vote, model2_bookmark,
@@ -1085,7 +1224,7 @@ tab_model(model2_vote, model2_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, interest in science news and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_vote, model3_bookmark,
@@ -1099,13 +1238,13 @@ tab_model(model3_vote, model3_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, interest in science news and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S34. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S34. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1113,6 +1252,7 @@ tab_model(model4_vote, model4_bookmark,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, interest in science news and all their interactions. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1123,7 +1263,6 @@ We also found significant heterogeneity effects over interest in self-reported i
 
 ```{r graph for news interest, fig.cap="Figure S2: Logistic regression plots for upvote and bookmark probability over self-reported interest in science news", echo=FALSE, warning=FALSE, message=FALSE, results='asis', out.width="100%"}
 
-# Preprocess data to classify Republicans and Democrats
 data <- final_df %>%
   filter(type=='climate')%>%
   mutate(
@@ -1132,7 +1271,6 @@ data <- final_df %>%
   drop_na( vote, bookmarked,Interest_dichotomious, headline_type)
 
 
-# Define a function to create the plot for each belief variable and response variable
 plot_logistic_regression <- function(belief_var, response_var, y_label, x_label) {
   ggplot(data, aes_string(x = belief_var, y = response_var, color = "headline_type")) +
     stat_smooth(method = "lm", se = TRUE) +
@@ -1145,8 +1283,8 @@ plot_logistic_regression <- function(belief_var, response_var, y_label, x_label)
     ) +
     facet_wrap(~ Interest_dichotomious) +
     scale_color_manual(values = c("Modified" = "orange", "Original" = "black")) +
-    scale_x_continuous(limits = c(0, 100)) +  # Set consistent x-axis limits
-    coord_cartesian(ylim = c(0.2, 0.8))       # Set visible y-axis range without removing data
+    scale_x_continuous(limits = c(0, 100)) +  
+    coord_cartesian(ylim = c(0.2, 0.8))       
 }
 
 # Generate plots for each combination of belief variable and response variable
@@ -1158,6 +1296,7 @@ p5 <- plot_logistic_regression("prior_risk_unscaled", "vote", "Probability of up
 p6 <- plot_logistic_regression("prior_risk_unscaled", "bookmarked", "Probability of bookmark", 'Belief that climate change is a threat')
 
 knitr::include_graphics("news_interest.png")
+cat('<div class="page-break"></div>')
 
 ```
 
@@ -1201,7 +1340,7 @@ pred_labels <- c('Intercept', "Prior", "Age", "Treatment", "Prior * Age", "Prior
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,  
           title = "Table S35. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1211,11 +1350,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, age and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S36. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1225,11 +1364,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, age and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,
           title = "Table S37. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1239,13 +1378,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, age and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S38. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S38. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1253,6 +1392,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, age and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1297,7 +1437,7 @@ pred_labels <- c('Intercept', "Prior", "Education", "Treatment", "Prior * Educat
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,  
           title = "Table S39. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1307,11 +1447,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, education and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S40. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1321,11 +1461,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, education and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S41. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1335,13 +1475,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, education and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S42. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S42. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1349,6 +1489,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, education and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1393,7 +1534,7 @@ pred_labels <- c('Intercept', "Prior", "Sex", "Treatment", "Prior * Sex", "Prior
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,  
           title = "Table S43. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1403,11 +1544,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, sex and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S44. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1417,11 +1558,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, sex and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S45. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1431,13 +1572,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, sex and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S46. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S46. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1445,6 +1586,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, sex and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1489,7 +1631,7 @@ pred_labels <- c('Intercept', "Prior", "Partisanship", "Treatment", "Prior * Par
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,  
           title = "Table S47. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1499,11 +1641,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, partisanship and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S48. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1513,11 +1655,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, partisanship and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S49. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1527,13 +1669,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, partisanship and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S50. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S50. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1541,6 +1683,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, partisanship and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1585,7 +1728,7 @@ pred_labels <- c('Intercept', "Prior", "Ideology", "Treatment", "Prior * Ideolog
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,  
           title = "Table S51. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1595,11 +1738,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, ideology and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S52. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1609,11 +1752,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, ideology and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S53. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1623,13 +1766,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, ideology and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S54. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S54. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1637,6 +1780,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, ideology and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1681,7 +1825,7 @@ pred_labels <- c('Intercept', "Prior", "Interest", "Treatment", "Prior * Interes
 
 
 tab_model(model1_credible, model1_bookmark, model1_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'), 
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'), 
           pred.labels = pred_labels,  
           title = "Table S55. Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
@@ -1691,11 +1835,11 @@ tab_model(model1_credible, model1_bookmark, model1_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical climate belief, treatment, interest in science news and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model2_credible, model2_bookmark,  model2_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S56. Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
@@ -1705,11 +1849,11 @@ tab_model(model2_credible, model2_bookmark,  model2_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment, interest in science news and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model3_credible, model3_bookmark,  model3_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
           title = "Table S57. Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
@@ -1719,13 +1863,13 @@ tab_model(model3_credible, model3_bookmark,  model3_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
-
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment, interest in science news and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 tab_model(model4_credible, model4_bookmark,  model4_vote,
-          dv.labels = c("Credibility", "Bookmark regret", 'New vote'),  
+          dv.labels = c("Credibility", "Bookmark regret", 'Upvote regret'),  
           pred.labels = pred_labels,
-          title = "Table S58. Regression Results for Prior on Climate Change is Risky",
+          title = "Table S58. Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -1733,6 +1877,7 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           show.icc = FALSE,     
           digits = 3,
           show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, interest in science news and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
@@ -1817,6 +1962,47 @@ htmltools::browsable(style)
 4. Lean Republican
 5. Republican
 6. Strongly Republican
+
+### All original and flipped headlines in the experiment
+
+```{r headlines table, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+json_url <- "https://raw.githubusercontent.com/bencebago/news_personalization/refs/heads/main/filtered_data_experiment.json"
+json_data <- fromJSON(json_url)
+
+json_df <- as.data.frame(json_data)
+
+get_domain <- function(url) {
+  domain <- str_extract(url, "(?<=//)[^/]+")
+  domain <- str_replace(domain, "^www\\.", "")
+  return(domain)
+}
+
+domain_to_outlet <- function(domain) {
+  case_when(
+    str_detect(domain, "vox") ~ "Vox",
+    str_detect(domain, "usatoday") ~ "USA Today",
+    str_detect(domain, "bbc") ~ "BBC",
+    str_detect(domain, "nationalgeographic") ~ "National Geographic",
+    str_detect(domain, "cbs") ~ "CBS",
+    str_detect(domain, "theguardian") ~ "The Guardian",
+    str_detect(domain, "nbc") ~ "NBC",
+    TRUE ~ str_to_title(gsub("\\..*", "", domain))  # fallback: prettify domain
+  )
+}
+
+table_df <- json_df %>%
+  select(title, selected_title_AbsoluteDenier, url) %>%
+  mutate(
+    domain = get_domain(url),
+    outlet = domain_to_outlet(domain)
+  ) %>%
+  select(outlet, title, selected_title_AbsoluteDenier, url)
+
+table_df %>%
+  kable("html", escape = FALSE, col.names = c("Outlet", "Original Headline", "Flipped Headline", "Source URL")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+
+```
 
 
 
