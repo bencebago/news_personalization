@@ -28,10 +28,11 @@ library(moments)
 ```
 
 
-```{r management}
+```{r management, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 column_names <- names(read.csv("personalization_social_media_June 28, 2024_05.24.csv", nrows = 1))
 
-df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
+#downloaded Qualtrics file
+df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134, encoding='UTF-8')
 
 names(df) <- column_names
 
@@ -43,6 +44,10 @@ duplicates <- df[duplicated(df$prolific), ]
 ##there is one p duplicate that produced no data twice. excluding it
 df <- df[!duplicated(df$prolific), ]
 
+prolificdf <- read.csv("prolific_export_667bcfe8d8e8186ce82f5edf.csv", sep=",", header = TRUE)
+
+df= df %>%
+  left_join(prolificdf, by = c('prolific' = 'Participant.id'))
 
 ratings_columns <- grep("^vote[0-9]+$", colnames(df), value = TRUE)
 statement_columns <- grep("^title[0-9]+$", colnames(df), value = TRUE)
@@ -108,39 +113,51 @@ json_data <- fromJSON(url)
 json_titles <-  c(json_data$title, json_data$selected_title_AbsoluteDenier)
 
 
-# Assuming final_df is already created as per previous steps
-# Create a new variable 'type' in final_df
 final_df <- final_df %>%
   mutate(type = ifelse(title %in% json_titles, 'climate', 'neutral'))
 
-##from original json I i should add the index for each each title for item nr that will be used for joining with the different datasets. 
-
-
-####some analysis will be run on original dataset, like posterior analysis
-
-
-## add columns to original dataset, most importantly climate change denier classification and statistics. 
 df = df%>%
   mutate(climate_figure = ifelse(climate2==1, "Believer", ifelse(climate2==2|climate2==3, 'Denier', NA)),
          climate_stat = ifelse(climate2==1, 0.5, ifelse(climate2==2|climate2==3, -0.5, 0)),
          condition_stat = ifelse(condition=='original', 0.5, -0.5),
-         Partisanship = ifelse(DemRep_C < 4, DemRep_C-4, DemRep_C-3),
          cause_change = prior_cause_1 - posterior_cause_1,
          risk_change = prior_risk_1 - posterior_risk_1,
          happen_change = prior_happen_1 - posterior_happen_1,
-         posterior_happen_1 = posterior_happen_1 -50,
-         posterior_risk_1 = posterior_risk_1-50,
-         posterior_cause_1 = posterior_cause_1-50,
-         prior_cause_1 = prior_cause_1-50,
-         prior_happen_1 = prior_happen_1-50,
-         prior_risk_1 = prior_risk_1-50)
+         
+         prior_happen_1_category = cut(prior_happen_1, 
+                                       breaks = c(0, 25, 50, 75, 100), 
+                                       include.lowest = TRUE, 
+                                       labels = c("0-25", "26-50", "51-75", "76-100")),
+        prior_cause_1_category = cut(prior_cause_1, 
+                                       breaks = c(0, 25, 50, 75, 100), 
+                                       include.lowest = TRUE, 
+                                       labels = c("0-25", "26-50", "51-75", "76-100")),
+        prior_cause_unscaled = prior_cause_1,
+        prior_happen_unscaled = prior_happen_1,
+        prior_risk_unscaled = prior_risk_1,
+        prior_cause_1 = scale(prior_cause_1),
+        prior_happen_1 = scale(prior_happen_1),
+        prior_risk_1 = scale(prior_risk_1),
+        Education = ifelse(Educational.Level > 3, 1, -1),
+        Partisanship = ifelse(DemRep_C < 4, DemRep_C-4, DemRep_C-3),
+        partisan_identity = ifelse(Partisanship < 0, 'Democrat', 'Republican'),
+        Q6..Ideology_econ = ifelse(Q6..Ideology_econ == 6, 0, Q6..Ideology_econ-3),
+        Q7..Ideology_social = ifelse(Q7..Ideology_social == 6, 0, Q7..Ideology_social-3),
+        Ideology = rowMeans(cbind(Q6..Ideology_econ, Q7..Ideology_social), na.rm = TRUE),
+        Ideology=scale(Ideology),
+        Partisanship=scale(Partisanship),
+        Interest = scale(Interest_1),
+        Sex = ifelse(Sex=='Female', -1, 1),
+        Age=scale(as.numeric(Age)))
+
+
 
 ####
 additional_columns <- c("condition", "climate1", "climate2", "prior_cause_1", "prior_happen_1", "prior_risk_1",
                         "P2..Attention.Check1", "Q6..Ideology_econ", "Q7..Ideology_social", "DemRep_C",
                         "Interest_1", "Interest_2", "Interest_3", "Interest_4", "Interest_5", "Interest_6", "Interest_7",
                         "Educational.Level", "bookmark_regret_1", "upvote_regret", "credibility_1", "selectedValue",
-                        "posterior_cause_1", "posterior_happen_1", "posterior_risk_1", 'Q110', 'Q111', 'Q133', 'Q134', 'condition_stat', 'climate_stat', 'climate_figure', 'condition_stat')
+                        "posterior_cause_1", "posterior_happen_1", "posterior_risk_1", 'Q110', 'Q111', 'Q133', 'Q134', 'condition_stat', 'climate_stat', 'climate_figure', 'condition_stat', 'Education', 'Age', 'Sex', 'Interest', 'Ideology', 'Partisanship','prior_happen_1_category','prior_cause_1_category', 'partisan_identity','prior_cause_unscaled', 'prior_risk_unscaled', 'prior_happen_unscaled')
 
 additional_columns <- additional_columns[additional_columns %in% colnames(df)]
 
@@ -150,10 +167,18 @@ final_df <- final_df %>%
          bookmarked=ifelse(bookmarked=="true",1,0))
   
          
-         
+ df2 <- df %>%
+  left_join(final_df %>% select(title, vote, prolific), 
+            by = c("selectedValue" = "title", "prolific" = "prolific"))%>%
+  mutate(voteregret = ifelse(vote==1 & upvote_regret==1, '11', ifelse(vote==1 & upvote_regret==0, '10', ifelse(vote==0 & upvote_regret==1, '01', '00'))))
+ 
+df2_clean_vote = df2 %>%
+    filter(voteregret== '10'| voteregret=='11')%>%
+mutate(statvoteregret = ifelse(voteregret=='10', 1,0))
+        
 
 
-rm(list = setdiff(ls(), c("df", "final_df")))
+rm(list = setdiff(ls(), c("df", "final_df", 'df2_clean_vote')))
 
 ```
 
@@ -282,11 +307,16 @@ df2_clean_vote = df2_clean %>%
 model1 = lmer(statchange ~ believerstat*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
 summary(model1)
 
+options(digits = 3, scipen = 999)
+
+# Run your model and summary
+model1 = lmer(statchange ~ scale(prior_happen_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
+summary(model1)
+
 model1 = lmer(statchange ~ scale(prior_cause_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
 summary(model1)
 
-model1 = lmer(statchange ~ scale(prior_happen_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
-summary(model1)
+
 
 model1 = lmer(statchange ~ scale(prior_risk_1)*conditionstat + (1|selectedValue), data=df2_clean_vote, na.action = na.omit)
 summary(model1)
@@ -330,23 +360,16 @@ summary(model1)
 ```{r item level heterogeneity}
 #create item_level-bookmark and item level bookmarking situations.
 # URL of the JSON file on GitHub
+
+##item_nr has to be different here. it must correspond to the item_nr in diff_data that correspond to the 58 original headline
+
+
+#create item_level-bookmark and item level bookmarking situations.
+# URL of the JSON file on GitHub
 json_url <- "https://raw.githubusercontent.com/bencebago/news_personalization/main/filtered_relevant_articles_science.json"
 
 json_data <- fromJSON(content(GET(json_url), "text", encoding = "UTF-8"))
 
-# Function to count words in a single string
-count_words <- function(string) {
-  words <- strsplit(string, "\\s+")
-  return(length(unlist(words)))
-}
-
-# Apply the function to each string in the vector
-json_data$wordcount <- sapply(json_data$text, count_words)
-
-# Read the response_factcheck.xlsx file
-response_factcheck <- read_excel("response_factcheck.xlsx")
-
-# Define the find_row function
 find_row <- function(statement, df) {
   for (i in seq_len(nrow(df))) {
     if (statement %in% df[i, ]) {
@@ -360,39 +383,16 @@ find_row <- function(statement, df) {
 df <- df %>%
   mutate(item_nr = map_int(selectedValue, ~ find_row(.x, json_data)))
 
-df <- df %>%
-  mutate(wordcount = ifelse(!is.na(item_nr), json_data$wordcount[item_nr], NA))
 
 # Add item_nr to final_df
 final_df <- final_df %>%
   mutate(item_nr = map_int(title, ~ find_row(.x, json_data)))
 
 
-response_factcheck <-response_factcheck %>%
-   mutate(item_nr = map_int(title, ~ find_row(.x, json_data)))
-
-
-response_relevance <- response_factcheck %>%
-  select(item_nr, relevance)
-
-jsonlength=json_data %>%
-  select(item_nr)
-
-# Merge relevance column with df based on item_nr
-df <- df %>%
-  left_join(response_relevance, by = "item_nr")%>%
-  mutate(relevance = ifelse(relevance == 4, 0, 1))
-
-# Merge relevance column with final_df based on item_nr
-final_df <- final_df %>%
-  left_join(response_relevance, by = "item_nr")%>%
-  mutate(relevance = ifelse(relevance == 4, 0, 1))
-
-
-
 
 average_df <- final_df %>%
-  group_by(item_nr, condition,climate2) %>% 
+  filter(climate2 %in% c(2,3))%>%
+  group_by(item_nr, condition) %>% 
   summarise(
     average_vote = mean(vote, na.rm = TRUE),
     average_bookmark = mean(bookmarked, na.rm = TRUE)
@@ -424,19 +424,27 @@ average_final_df <- average_diff_df %>%
     vote_difference,
     original_bookmark_average,
     personal_bookmark_average,
-    bookmark_difference,
-    climate2
+    bookmark_difference
   )
 
 diff_data = read.csv('diff_data.csv', header=T)
 
 average_final_df <- average_final_df%>%
-  left_join(diff_data, by = 'item_nr')%>%
-  left_join(response_relevance, by = "item_nr")%>%
-  mutate(relevance = ifelse(relevance == 4, 0, 1))
+  left_join(diff_data, by = 'item_nr')
 
 
 rm(list = setdiff(ls(), c("df", "final_df", 'average_final_df')))
+
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$bookmark_difference, average_final_df$AbsoluteDenier_negative_distance)
+
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_agreement_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_regret_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_positive_distance)
+cor.test(average_final_df$vote_difference, average_final_df$AbsoluteDenier_negative_distance)
+
 
 ```
 

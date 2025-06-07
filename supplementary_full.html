@@ -606,12 +606,9 @@ participants had only one rating in these metrics).</p>
 </div>
 <div id="preregistered-analysis-on-engagement" class="section level2">
 <h2>Preregistered analysis on engagement</h2>
-<div class="page-break">
-
-</div>
 <table style="border-collapse:collapse; border:none;">
 <caption style="font-weight: bold; text-align:left;">
-Table S1. Regression Results for Categorical Climate Belief
+Table S1. Linear Regression Results for Categorical Climate Belief
 </caption>
 <tr>
 <th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
@@ -770,7 +767,8 @@ interaction. DV is either bookmark or votes.
 </div>
 <table style="border-collapse:collapse; border:none;">
 <caption style="font-weight: bold; text-align:left;">
-Table S2. Regression Results for Prior on Climate Change is Happening
+Table S2. Linear Regression Results for Prior on Climate Change is
+Happening
 </caption>
 <tr>
 <th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
@@ -929,8 +927,8 @@ treatment and their interaction. DV is either bookmark or votes.
 </div>
 <table style="border-collapse:collapse; border:none;">
 <caption style="font-weight: bold; text-align:left;">
-Table S3. Regression Results for Prior on Climate Change Caused by
-Humanity
+Table S3. Linear Regression Results for Prior on Climate Change Caused
+by Humanity
 </caption>
 <tr>
 <th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
@@ -1090,7 +1088,8 @@ votes.
 </div>
 <table style="border-collapse:collapse; border:none;">
 <caption style="font-weight: bold; text-align:left;">
-Table S4. Regression Results for Prior on Climate Change is a Threat
+Table S4. Linear Regression Results for Prior on Climate Change is a
+Threat
 </caption>
 <tr>
 <th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
@@ -1274,38 +1273,80 @@ know’.</p>
 <p>When restricting analysis to skeptics (as per the categorical
 variable) we find a significant treatment effect on upvotes (<span class="math inline">\(b = -0.1, p = 0.014\)</span>), but not on
 bookmarks (<span class="math inline">\(b = -0.06, p = 0.157\)</span>).
-This analysis is exploratory since the preregistered outcome of interest
-was the interaction effect between belief and treatment. A post-hoc
-power analysis suggested that we would have needed about 1,000 skeptics
-to detect the <span class="math inline">\(b = -0.06\)</span> effect size
-on bookmarks with a 95% power. We conducted a siulation based power
-analysis, for which we used the parameters (standard errors, beta) from
-the corresponding model.</p>
+For believers, these effects are generally smaller, and non-significant
+on upvotes (<span class="math inline">\(b = -0.01, p = 0.708\)</span>),
+and on bookmarks (<span class="math inline">\(b = 0.04, p =
+0.265\)</span>). A simulation-based power analysis suggested that we
+would have needed about 1,000 skeptics to detect the b = -0.06 effect
+size on bookmarks with 95% power, assuming 350 headlines (175 original
+and 175 flipped). We conducted this power analysis using the simr
+package in R, using parameters (random effect variances, residual
+variance, intercept) estimated from the corresponding fitted model that
+predicted bookmarks by treatment condition among skeptics, including
+random intercepts for headlines and participants. The simulation
+respected the experimental structure: participants were randomly
+assigned to the original or flipped condition, each headline appeared in
+only one condition, and every participant saw exactly 11 randomly
+selected headlines. Our treatment was designed to increase engagement
+among skeptics; flipped headlines were hypothesised to be more engaging
+than their original counterparts. Because each headline appears in only
+one condition, headline-specific differences (captured by the headline
+random intercept, <span class="math inline">\(Var = 0.02\)</span>) stay
+in the error term. Since we cannot compare the same headline across both
+conditions, this extra between-headline variability may inflate the
+standard error of the treatment effect and lowers statistical power.
+Hence, this is a conservative design that does not bias the point
+estimate (beta) itself. Consequently, due to this nested design
+structure and the large headline-level variance, increasing power
+requires increasing both the number of participants and the number of
+headlines, not just participant sample size alone. Using the same
+simulation based technique, we also calculated that our current sample
+size would be powered to detect an effect of <span class="math inline">\(b = 0.16\)</span>.</p>
 </div>
-<div id="engagement-analysis-on-extreme-skepticsbelievers" class="section level2">
-<h2>Engagement analysis on extreme skeptics/believers</h2>
+<div id="engagement-analysis-on-extreme-and-moderate-skepticsbelievers" class="section level2">
+<h2>Engagement analysis on extreme and moderate skeptics/believers</h2>
 <p>To explore (post hoc) the impact of modified headlines as a function
 of initial climate skepticism, we analyzed the treatment effect in four
 subgroups defined by 4 different levels of skepticism, for each of 3
 continuous measures of skepticism (i.e., 0-25, 26-50, 51-75, 76-100),
 that showed the highest effects both for votes and bookmarks among the
-most skeptical audiences in the belief that climate change is happening
-(vote : <span class="math inline">\(b = -0.168\)</span>, <span class="math inline">\(p = .01\)</span>, bookmark: <span class="math inline">\(b = -0.09\)</span>, <span class="math inline">\(p
-= .142\)</span>), that is caused by human activity (vote : <span class="math inline">\(b = -0.14\)</span>, <span class="math inline">\(p
-= .01\)</span>, bookmark: <span class="math inline">\(b = -0.1\)</span>,
-<span class="math inline">\(p = .054\)</span>) and that it is a
-significant threat (vote : <span class="math inline">\(b =
--0.17\)</span>, <span class="math inline">\(p = .004\)</span>, bookmark:
-<span class="math inline">\(b = -0.11\)</span>, <span class="math inline">\(p = .051\)</span>). % The treatment is the least
-effective among the most believers in the belief that climate change is
-happening (vote : <span class="math inline">\(b = -0.01\)</span>, <span class="math inline">\(p = .619\)</span>, bookmark: <span class="math inline">\(b = 0.03\)</span>, <span class="math inline">\(p =
-.378\)</span>), that is caused by human activity (vote : <span class="math inline">\(b = 0.001\)</span>, <span class="math inline">\(p
-= .960\)</span>, bookmark: <span class="math inline">\(b =
-0.05\)</span>, <span class="math inline">\(p = .168\)</span>) and that
-it is a significant threat (vote : <span class="math inline">\(b =
--0.01\)</span>, <span class="math inline">\(p = .717\)</span>, bookmark:
-<span class="math inline">\(b = 0.04\)</span>, <span class="math inline">\(p = .282\)</span>), whereas higher positive beta
-means higher treatment effect.</p>
+most skeptical audiences [response between 0-25 on the continuous
+scales] in the belief that climate change is happening (vote : <span class="math inline">\(b = -0.168\)</span>, <span class="math inline">\(p
+= .01\)</span>, bookmark: <span class="math inline">\(b =
+-0.09\)</span>, <span class="math inline">\(p = .142\)</span>), that is
+caused by human activity (vote : <span class="math inline">\(b =
+-0.14\)</span>, <span class="math inline">\(p = .01\)</span>, bookmark:
+<span class="math inline">\(b = -0.1\)</span>, <span class="math inline">\(p = .054\)</span>) and that it is a significant
+threat (vote : <span class="math inline">\(b = -0.17\)</span>, <span class="math inline">\(p = .004\)</span>, bookmark: <span class="math inline">\(b = -0.11\)</span>, <span class="math inline">\(p
+= .051\)</span>).</p>
+<p>For moderate skeptics [response between 26-50 on the continuous
+scales] treatment effects were generally smaller; in the belief that
+climate change is happening (vote : <span class="math inline">\(b =
+-0.07\)</span>, <span class="math inline">\(p = .06\)</span>, bookmark:
+<span class="math inline">\(b = -0.03\)</span>, <span class="math inline">\(p = .475\)</span>), that is caused by human
+activity (vote : <span class="math inline">\(b = -0.07\)</span>, <span class="math inline">\(p = .04\)</span>, bookmark: <span class="math inline">\(b = -0.04\)</span>, <span class="math inline">\(p
+= .036\)</span>) and that it is a significant threat (vote : <span class="math inline">\(b = -0.06\)</span>, <span class="math inline">\(p
+= .115\)</span>, bookmark: <span class="math inline">\(b =
+-0.02\)</span>, <span class="math inline">\(p = .563\)</span>).</p>
+<p>For moderate believers [response between 51-75 on the continuous
+scales], the treatment is not effective; in the belief that climate
+change is happening (vote : <span class="math inline">\(b =
+-0.02\)</span>, <span class="math inline">\(p = .567\)</span>, bookmark:
+<span class="math inline">\(b = 0.02\)</span>, <span class="math inline">\(p = .461\)</span>), that is caused by human
+activity (vote : <span class="math inline">\(b = -0.01\)</span>, <span class="math inline">\(p = .713\)</span>, bookmark: <span class="math inline">\(b = 0.03\)</span>, <span class="math inline">\(p =
+.313\)</span>) and that it is a significant threat (vote : <span class="math inline">\(b = -0.005\)</span>, <span class="math inline">\(p
+= .852\)</span>, bookmark: <span class="math inline">\(b =
+0.03\)</span>, <span class="math inline">\(p = .336\)</span>).</p>
+<p>The treatment is the least effective among the most believers
+[response between 76-100 on the continuous scales] in the belief that
+climate change is happening (vote : <span class="math inline">\(b =
+-0.01\)</span>, <span class="math inline">\(p = .619\)</span>, bookmark:
+<span class="math inline">\(b = 0.03\)</span>, <span class="math inline">\(p = .378\)</span>), that is caused by human
+activity (vote : <span class="math inline">\(b = 0.001\)</span>, <span class="math inline">\(p = .960\)</span>, bookmark: <span class="math inline">\(b = 0.05\)</span>, <span class="math inline">\(p =
+.168\)</span>) and that it is a significant threat (vote : <span class="math inline">\(b = -0.01\)</span>, <span class="math inline">\(p
+= .717\)</span>, bookmark: <span class="math inline">\(b =
+0.04\)</span>, <span class="math inline">\(p = .282\)</span>), whereas
+higher positive beta means higher treatment effect.</p>
 </div>
 <div id="replication-of-engagement-effects-with-inattention-exclusions" class="section level2">
 <h2>Replication of Engagement effects with inattention exclusions</h2>
@@ -2006,15 +2047,16 @@ decreased regret among skeptics in the treatment condition only in these
 2 measures. Indeed, we found evidence that one sentimentality score, as
 rated by Llama3, included in the regression, treatment condition no
 longer significantly interact with prior beliefs, while sentimentality
-does interact with prior beliefs significantly. This supports our
-suspicion that negativity of the article texts makes skeptics experience
-negative emotions that make them later regret their choice.
-Nevertheless, the interpretation of this analysis is speculative and
-should be treated as such. Importantly, as it can be seen in the
-analysis of the posterior beliefs or the perceived credibility of the
-article this increased regret in the modified headline condition does
-not translate to decreased belief updating nor a decrease in judgments
-of credibility.</p>
+is associated with hightened regret, and it also interacts with prior
+beliefs. This supports our suspicion that negativity of the article
+texts makes skeptics experience negative emotions that make them later
+regret their choice. Nevertheless, the interpretation of this analysis
+is speculative and should be treated as such. Importantly, as it can be
+seen in the analysis of the posterior beliefs or the perceived
+credibility of the article this increased regret in the modified
+headline condition does not translate to decreased belief updating nor a
+decrease in judgments of of article content.</p>
+[1] 8
 <div class="page-break">
 
 </div>
@@ -16938,6 +16980,670 @@ padding-right: 30px;
 }
 </style>
 </div>
+</div>
+<div id="robustness-check-with-logistic-regression-analysis" class="section level2">
+<h2>Robustness check with logistic regression analysis</h2>
+<p>For robustness check, we also conducted a logistic regression
+analysis on the engagement results as the the outcome variables were
+binary. The results were consistent with the linear regression analysis
+of these measures.</p>
+<div class="page-break">
+
+</div>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Table S56. Logistic Regression Results for Categorical Climate Belief
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Vote
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Bookmark
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Intercept
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.977
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.152
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.048
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.072
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.500
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+4.052
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.299
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.597
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.060
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.756
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.117
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.070
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.957
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.132
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.750
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior * Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.595
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.234
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.535
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.115
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+Marginal R<sup>2</sup> / Conditional R<sup>2</sup>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.070 / 0.380
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.013 / 0.109
+</td>
+</tr>
+</table>
+Note. All models include random intercepts for titles and subjects;
+predictors are categorical prior belief, treatment and their
+interaction. DV is either bookmark or votes.
+<div class="page-break">
+
+</div>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Table S57. Logistic Regression Results for Prior on Climate Change is
+Happening
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Vote
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Bookmark
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Intercept
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+2.739
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.207
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.171
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.081
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.022</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.857
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.058
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.191
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.019
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.859
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.129
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.314
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.062
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.146
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.662
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior * Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.250
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.078
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.175
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.038
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+Marginal R<sup>2</sup> / Conditional R<sup>2</sup>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.077 / 0.380
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.010 / 0.110
+</td>
+</tr>
+</table>
+Note. All models include random intercepts for titles and subjects;
+predictors are continuous prior on climate change is happening,
+treatment and their interaction. DV is either bookmark or votes.
+<div class="page-break">
+
+</div>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Table S58. Logistic Regression Results for Prior on Climate Change
+Caused by Humanity
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Vote
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Bookmark
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Intercept
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+2.746
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.207
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.174
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.081
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.020</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.981
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.061
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.267
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.020
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.889
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.134
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.435
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.076
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.148
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.594
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior * Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.251
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.076
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.228
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.039
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+Marginal R<sup>2</sup> / Conditional R<sup>2</sup>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.093 / 0.379
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.019 / 0.110
+</td>
+</tr>
+</table>
+Note. All models include random intercepts for titles and subjects;
+predictors are continuous prior on climate change is caused by human
+activity, treatment and their interaction. DV is either bookmark or
+votes.
+<div class="page-break">
+
+</div>
+<table style="border-collapse:collapse; border:none;">
+<caption style="font-weight: bold; text-align:left;">
+Table S59. Logistic Regression Results for Prior on Climate Change is a
+Threat
+</caption>
+<tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">
+ 
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Vote
+</th>
+<th colspan="3" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
+Bookmark
+</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">
+Predictors
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+p
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+Odds Ratios
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">
+std. Error
+</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
+p
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Intercept
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+2.718
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.204
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.172
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.080
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.021</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+2.128
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.063
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.271
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.020
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.887
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.133
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.423
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.071
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.147
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.616
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+Prior * Treatment
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.259
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.074
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+<strong>&lt;0.001</strong>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+1.206
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.038
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>&lt;0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
+Observations
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="3">
+21989
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
+Marginal R<sup>2</sup> / Conditional R<sup>2</sup>
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.114 / 0.377
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="3">
+0.019 / 0.110
+</td>
+</tr>
+</table>
+Note. All models include random intercepts for titles and subjects;
+predictors are continuous prior on climate change is a threat, treatment
+and their interaction. DV is either bookmark or votes.
+<div class="page-break">
+
+</div>
+<style>
+table {
+border-collapse: collapse;
+width: 100%;
+}
+th, td {
+padding: 8px;
+text-align: left;
+border-bottom: 1px solid #ddd;
+}
+td:nth-child(2) {
+padding-right: 30px; 
+}
+</style>
 <div id="prior-and-posterior-beliefs" class="section level3">
 <h3>Prior and Posterior Beliefs</h3>
 <p><strong>Question:</strong></p>

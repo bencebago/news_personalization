@@ -18,7 +18,7 @@ library(httr)
 # Read the CSV file with the appropriate delimiter
 column_names <- names(read.csv("personalization_pretest_June 6, 2024_21.29.csv", nrows = 1))
 
-df <- read.csv("personalization_pretest_June 6, 2024_21.29.csv", sep=",", skip = 79, header = FALSE)
+df <- read.csv("personalization_pretest_June 6, 2024_21.29.csv", sep=",", skip = 79, header = FALSE, encoding='UTF-8')
 
 names(df) <- column_names
 
@@ -118,9 +118,9 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 
-final_df <- final_df %>%
-  mutate(regret_rating = regret_rating * -1,
-         positive_rating = positive_rating * -1)
+#final_df <- final_df %>%
+#  mutate(regret_rating = regret_rating * -1,
+ #        positive_rating = positive_rating * -1)
 
 # Function to calculate correlation matrix
 calc_correlations <- function(data) {
@@ -303,7 +303,7 @@ sd(as.numeric(df2$Age), na.rm=T)
 
 
 byItem <- final_df %>%
-  mutate(regret_rating = regret_rating * -1) %>%
+  #mutate(regret_rating = regret_rating * -1) %>%
   filter(climate2 == "Caused mostly by natural changes in the environment" | 
          climate2 == "None of the above because global warming isn’t happening") %>%
   group_by(item_nr, entry_name) %>%

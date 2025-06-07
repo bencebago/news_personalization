@@ -47,7 +47,7 @@ library(kableExtra)
 column_names <- names(read.csv("personalization_social_media_June 28, 2024_05.24.csv", nrows = 1))
 
 #downloaded Qualtrics file
-df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134)
+df <- read.csv("personalization_social_media_June 28, 2024_05.24.csv", sep=",", header = FALSE, skip=134, encoding='UTF-8')
 
 names(df) <- column_names
 
@@ -203,7 +203,8 @@ Here, we report standardized beta coefficients. All continuous variables were sc
 
 ## Preregistered analysis on engagement
 
-```{r engagement analysis, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+```{r engagement analysis linear, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 
 final_df_filtered = final_df %>%
   filter(type == 'climate')
@@ -238,13 +239,12 @@ style <- htmltools::tags$style(HTML("
 "))
 
 pred_labels <- c('Intercept', "Prior",  "Treatment",  "Prior * Treatment")
-cat('<div class="page-break"></div>')
 
 
 tab_model(model1_vote, model1_bookmark,
           dv.labels = c("Vote", "Bookmark"),  
           pred.labels = pred_labels,  
-          title = "Table S1. Regression Results for Categorical Climate Belief",
+          title = "Table S1. Linear Regression Results for Categorical Climate Belief",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -259,7 +259,7 @@ cat('<div class="page-break"></div>')
 tab_model(model2_vote, model2_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S2. Regression Results for Prior on Climate Change is Happening",
+          title = "Table S2. Linear Regression Results for Prior on Climate Change is Happening",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -273,7 +273,7 @@ cat('<div class="page-break"></div>')
 tab_model(model3_vote, model3_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S3. Regression Results for Prior on Climate Change Caused by Humanity",
+          title = "Table S3. Linear Regression Results for Prior on Climate Change Caused by Humanity",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -287,7 +287,7 @@ cat('<div class="page-break"></div>')
 tab_model(model4_vote, model4_bookmark,
           dv.labels = c("Vote", "Bookmark"),
           pred.labels = pred_labels,
-          title = "Table S4. Regression Results for Prior on Climate Change is a Threat",
+          title = "Table S4. Linear Regression Results for Prior on Climate Change is a Threat",
           show.ci = FALSE, 
           show.p = TRUE,
           show.se = TRUE, 
@@ -302,6 +302,7 @@ htmltools::browsable(style)
 
 ```
 
+
 ## Distribution of responses on categorical prior belief measure
 ```{r engagement analysis per categorical variable, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 
@@ -312,8 +313,16 @@ final_df_filtered = final_df %>%
 model1_vote <- lmer(vote ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(2,3),], na.action = na.omit)
 #summary(model1_vote)
 
-model1_bookmark <- lmer(bookmarked ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(2,3),], na.action = na.omit)
+model1_bookmark <- lmer(bookmarked ~ condition_stat + (1|title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(2,3),], na.action = na.omit)
 #summary(model1_bookmark)
+
+
+model2_vote <- lmer(vote ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(1),], na.action = na.omit)
+#summary(model2_vote)
+
+model2_bookmark <- lmer(bookmarked ~ condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered[final_df_filtered$climate2 %in% c(1),], na.action = na.omit)
+#summary(model2_bookmark)
+
 
 
 id_counts<-final_df_filtered%>%
@@ -324,79 +333,365 @@ id_counts<-final_df_filtered%>%
 
 Participants had to answer the question: 'Assuming climate change is happening, do you think it is...?', and select a response from 5 options. In total, `r id_counts$unique_prolificIDs[id_counts$climate2 == 1]` people selected 'Caused mostly by human activities', `r id_counts$unique_prolificIDs[id_counts$climate2 == 2]` people selected 'Caused mostly by natural changes in the environment', `r id_counts$unique_prolificIDs[id_counts$climate2 == 3]` people selected 'None of the above because global warming is not happening', `r id_counts$unique_prolificIDs[id_counts$climate2 == 4]` people selected 'Other' and `r id_counts$unique_prolificIDs[id_counts$climate2 == 5]` people selected 'Don't know'. 
 
-When restricting analysis to skeptics (as per the categorical variable) we find a significant treatment effect on upvotes ($b = -0.1, p = 0.014$), but not on bookmarks ($b = -0.06, p = 0.157$). This analysis is exploratory since the preregistered outcome of interest was the interaction effect between belief and treatment. A post-hoc power analysis suggested that we would have needed about 1,000 skeptics to detect the $b = -0.06$ effect size on bookmarks with a 95\% power. We conducted a siulation based power analysis, for which we used the parameters (standard errors, beta) from the corresponding model. 
+When restricting analysis to skeptics (as per the categorical variable) we find a significant treatment effect on upvotes ($b = -0.1, p = 0.014$), but not on bookmarks ($b = -0.06, p = 0.157$). For believers, these effects are generally smaller, and non-significant on upvotes ($b = -0.01, p = 0.708$), and on bookmarks ($b = 0.04, p = 0.265$). A simulation-based power analysis suggested that we would have needed about 1,000 skeptics to detect the b = -0.06 effect size on bookmarks with 95% power, assuming 350 headlines (175 original and 175 flipped). We conducted this power analysis using the simr package in R, using parameters (random effect variances, residual variance, intercept) estimated from the corresponding fitted model that predicted bookmarks by treatment condition among skeptics, including random intercepts for headlines and participants. The simulation respected the experimental structure: participants were randomly assigned to the original or flipped condition, each headline appeared in only one condition, and every participant saw exactly 11 randomly selected headlines.
+Our treatment was designed to increase engagement among skeptics; flipped headlines were hypothesised to be more engaging than their original counterparts. Because each headline appears in only one condition, headline-specific differences (captured by the headline random intercept, $Var = 0.02$) stay in the error term. Since we cannot compare the same headline across both conditions, this extra between-headline variability may inflate the standard error of the treatment effect and lowers statistical power. Hence, this is a conservative design that does not bias the point estimate (beta) itself.
+Consequently, due to this nested design structure and the large headline-level variance, increasing power requires increasing both the number of participants and the number of headlines, not just participant sample size alone. 
+Using the same simulation based technique, we also calculated that our current sample size would be powered to detect an effect of $b = 0.16$.
 
 ```{r power analysis, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, eval=FALSE}
 
 
+library(simr)
 
-# SDs are taken from model1_bookmark
-prolific_sd <- 0.078
-title_sd <- 0.154
-resid_sd <- 0.468
-
-n_items_total <- 56
-n_items_per_subj <- 10
-n_subj <- 1000
-b_treat <- 0.06
-
-run_sim <- function() {
-  subj_ids <- 1:n_subj
-  item_ids <- 1:n_items_total
+create_between_subjects_design <- function(n_subj = 470) {
   
-  # Assign treatment randomly across subjects
-  treatment_df <- tibble(
-    subject = subj_ids,
-    treatment = rbinom(n_subj, 1, 0.5)
+  items <- factor(1:n_items_total)
+  n_items_per_condition <- n_items_total / 2
+  
+  item_assignment <- data.frame(
+    title = items,
+    item_condition = c(
+      rep("control", n_items_per_condition),
+      rep("treatment", n_items_per_condition)
+    )
   )
   
-  # Randomly assign 11 items to each subject
-  subject_item_df <- treatment_df %>%
-    rowwise() %>%
-    mutate(items = list(sample(item_ids, n_items_per_subj))) %>%
-    unnest(items) %>%
-    rename(item = items)
+  subjects <- factor(1:n_subj)
+  n_subj_per_condition <- n_subj / 2
   
-  # Simulate random intercepts
-  subj_re <- rnorm(n_subj, 0, prolific_sd)
-  item_re <- rnorm(n_items_total, 0, title_sd)
-  
-  df <- subject_item_df %>%
-    mutate(
-      subj_intercept = subj_re[subject],
-      item_intercept = item_re[item],
-      error = rnorm(n(), 0, resid_sd),
-      bookmark_prob = 0.43 + b_treat * treatment + subj_intercept + item_intercept + error,
-      bookmark_prob = pmin(pmax(bookmark_prob, 0), 1),
-      bookmark = rbinom(n(), 1, bookmark_prob)
+  subject_assignment <- data.frame(
+    subj = subjects,
+    subj_condition = c(
+      rep("control", n_subj_per_condition),
+      rep("treatment", n_subj_per_condition)
     )
+  )
   
-  # Fit model
-  model <- lmer(bookmark ~ treatment + (1 | subject) + (1 | item), data = df)
-  pval <- summary(model)$coefficients["treatment", "Pr(>|t|)"]
-  beta <- fixef(model)["treatment"]
+  design_list <- list()
   
-  return(tibble(pval = pval, beta = beta))
+  for(i in 1:nrow(subject_assignment)) {
+    subj_id <- subject_assignment$subj[i]
+    subj_cond <- subject_assignment$subj_condition[i]
+    
+    available_items <- item_assignment$title[item_assignment$item_condition == subj_cond]
+    
+    selected_items <- sample(available_items, n_items_per_subj, replace = FALSE)
+    
+    subj_data <- data.frame(
+      subj = subj_id,
+      title = selected_items,
+      condition = subj_cond
+    )
+    
+    design_list[[i]] <- subj_data
+  }
+  
+  design <- do.call(rbind, design_list)
+  
+  return(design)
 }
 
-# Run simulation 1000 times to estimate power
-set.seed(42)
-n_sim <- 1000
-results <- map_dfr(1:n_sim, ~run_sim())
+#####dataset parameters
+n_items_total <- 350
+n_items_per_subj <- 11
+n_subj <- 1000
 
-power_estimate <- mean(results$pval < 0.05)
-mean_beta <- mean(results$beta)
 
-#cat("Estimated power:", round(power_estimate, 3), "\n")
-#cat("Mean estimated beta:", round(mean_beta, 3), "\n")
+##model parameters
+fixed <- c(0.46, -0.06)
+rand <- list(0.006, 0.02)
+res <-0.22
+
+
+design <- create_between_subjects_design(n_subj = 1000)
+
+# Build the initial model
+pilot_model <- makeLmer(y ~ condition + (1 |title) + (1 | subj), fixef=fixed, VarCorr=rand, sigma=res,
+                    data = design)
+
+power <- powerSim(pilot_model, fixed("conditiontreatment", "z"),nsim = 200)
+power
+
+
+# Load required libraries
+library(lme4)
+library(lmerTest)
+
+# Set parameters
+n_simulations <- 100
+n_participants_per_group <- 500
+n_trials_per_participant <- 11
+alpha <- 0.05
+
+# Storage for results
+significant_results <- numeric(n_simulations)
+
+# Power analysis loop
+set.seed(123)  # For reproducibility
+
+for(i in 1:n_simulations) {
+  
+  # Step 1: Create dataset
+  
+  # Create participant IDs
+  control_subjects <- paste0("S", 1:n_participants_per_group)
+  treatment_subjects <- paste0("S", (n_participants_per_group + 1):(2 * n_participants_per_group))
+  
+  # Initialize empty dataframe
+  data_list <- list()
+  
+  # Control group data
+  for(subj in control_subjects) {
+    # Generate bookmarked values (you'll need to specify mean and sd)
+    bookmarked_vals <- rnorm(n_trials_per_participant, mean = 0.43, sd = 0.49)  # Adjust mean/sd as needed
+    
+    # Sample item identifiers from 1:28
+    item_ids <- sample(1:28, n_trials_per_participant, replace = TRUE)
+    
+    # Create subject data
+    subj_data <- data.frame(
+      subject = subj,
+      condition = "control",
+      bookmarked = bookmarked_vals,
+      item = item_ids
+    )
+    
+    data_list[[length(data_list) + 1]] <- subj_data
+  }
+  
+  # Treatment group data  
+  for(subj in treatment_subjects) {
+    # Generate bookmarked values (you'll need to specify mean and sd)
+    bookmarked_vals <- rnorm(n_trials_per_participant, mean = 0.49, sd = 0.50)  # Adjust mean/sd as needed
+    
+    # Sample item identifiers from 29:56
+    item_ids <- sample(29:56, n_trials_per_participant, replace = TRUE)
+    
+    # Create subject data
+    subj_data <- data.frame(
+      subject = subj,
+      condition = "treatment", 
+      bookmarked = bookmarked_vals,
+      item = item_ids
+    )
+    
+    data_list[[length(data_list) + 1]] <- subj_data
+  }
+  
+  # Combine all data
+  full_data <- do.call(rbind, data_list)
+  
+  # Step 2: Fit lmer model
+  tryCatch({
+    model <- lmerTest::lmer(bookmarked ~ condition + (1|item) + (1|subject), data = full_data)
+    
+    # Step 3: Check if condition is significant
+    summary_model <- summary(model)
+    p_value <- summary_model$coefficients["conditiontreatment", "Pr(>|t|)"]
+    
+    # Store result (1 if significant, 0 if not)
+    significant_results[i] <- ifelse(p_value < alpha, 1, 0)
+    
+  }, error = function(e) {
+    # If model fails to converge, mark as non-significant
+    significant_results[i] <- 0
+  })
+  
+  # Progress indicator
+  if(i %% 10 == 0) {
+    cat("Completed simulation", i, "of", n_simulations, "\n")
+  }
+}
+
+# Step 4: Calculate power
+power <- sum(significant_results) / n_simulations
+cat("\nPower Analysis Results:\n")
+cat("Number of significant results:", sum(significant_results), "out of", n_simulations, "\n")
+cat("Estimated power:", round(power, 3), "\n")
+
+
+
+
+
+# 2) Effect size detectable with 95% power using current N
+find_detectable_effect_size <- function(n_titles = 56, target_power = 0.95) {
+  effect_sizes <- seq(0.1, 0.20, by = 0.01)
+  
+  for (effect_size in effect_sizes) {
+    power_results <- replicate(200, {
+      title_treatment <- tibble(
+        title = 1:n_titles,
+        condition_stat = rbinom(n_titles, 1, 0.5)
+      )
+      
+      obs_per_title <- round(n_obs / n_titles)
+      total_obs <- n_titles * obs_per_title
+      
+      df <- tibble(
+        obs_id = 1:total_obs,
+        prolific = sample(1:n_subj, total_obs, replace = TRUE),
+        title = rep(1:n_titles, each = obs_per_title)
+      ) %>%
+        left_join(title_treatment, by = "title")
+      
+      prolific_re <- rnorm(n_subj, 0, prolific_sd)
+      title_re <- rnorm(n_titles, 0, title_sd)
+      
+      df <- df %>%
+        mutate(
+          prolific_intercept = prolific_re[prolific],
+          title_intercept = title_re[title],
+          error = rnorm(n(), 0, resid_sd),
+          bookmarked = 0.46040 - effect_size * condition_stat + prolific_intercept + title_intercept + error
+        )
+      
+      tryCatch({
+        model <- lmer(bookmarked ~ condition_stat + (1 | title) + (1 | prolific), data = df)
+        summary(model)$coefficients["condition_stat", "Pr(>|t|)"] < 0.05
+      }, error = function(e) FALSE)
+    })
+    
+    current_power <- mean(power_results)
+    cat("Effect size:", round(effect_size, 3), "Power:", round(current_power, 3), "\n")
+    
+    if (current_power >= target_power) {
+      cat("Effect size detectable with 95% power using N=56 titles:", round(effect_size, 3), "\n")
+      break
+    }
+  }
+}
+
+find_detectable_effect_size()
+
+
+
+r# Find titles where item_nr is NA
+titles_with_na <- final_df %>%
+ filter(is.na(item_nr)) %>%
+ select(title) %>%
+ distinct()
+
+# View them
+titles_with_na
+
+# Or just get the unique titles as a vector
+unique_na_titles <- final_df$title[is.na(final_df$item_nr)]
+unique(unique_na_titles)
+
+# To see how many observations each NA title has
+final_df %>%
+ filter(is.na(item_nr)) %>%
+ count(title, sort = TRUE)
+
 
 ```
 
 
-## Engagement analysis on extreme skeptics/believers
-To explore (post hoc) the impact of modified headlines as a function of initial climate skepticism, we analyzed the treatment effect in four subgroups defined by 4 different levels of skepticism, for each of 3  continuous measures of skepticism (i.e., 0-25, 26-50, 51-75, 76-100), that showed the highest effects both for votes and bookmarks among the most skeptical audiences in the belief that climate change is happening (vote : $b = -0.168$, $p = .01$, bookmark: $b = -0.09$, $p = .142$), that is caused by human activity (vote : $b = -0.14$, $p = .01$, bookmark: $b = -0.1$, $p = .054$) and that it is a significant threat (vote : $b = -0.17$, $p = .004$, bookmark: $b = -0.11$, $p = .051$). 
-% The treatment is the least effective among the most believers in the belief that climate change is happening (vote : $b = -0.01$, $p = .619$, bookmark: $b = 0.03$, $p = .378$), that is caused by human activity (vote : $b = 0.001$, $p = .960$, bookmark: $b = 0.05$, $p = .168$) and that it is a significant threat (vote : $b = -0.01$, $p = .717$, bookmark: $b = 0.04$, $p = .282$), whereas higher positive beta means higher treatment effect. 
+## Engagement analysis on extreme and moderate skeptics/believers
 
+To explore (post hoc) the impact of modified headlines as a function of initial climate skepticism, we analyzed the treatment effect in four subgroups defined by 4 different levels of skepticism, for each of 3  continuous measures of skepticism (i.e., 0-25, 26-50, 51-75, 76-100), that showed the highest effects both for votes and bookmarks among the most skeptical audiences [response between 0-25 on the continuous scales] in the belief that climate change is happening (vote : $b = -0.168$, $p = .01$, bookmark: $b = -0.09$, $p = .142$), that is caused by human activity (vote : $b = -0.14$, $p = .01$, bookmark: $b = -0.1$, $p = .054$) and that it is a significant threat (vote : $b = -0.17$, $p = .004$, bookmark: $b = -0.11$, $p = .051$). 
+
+For moderate skeptics [response between 26-50 on the continuous scales] treatment effects were generally smaller; in the belief that climate change is happening (vote : $b = -0.07$, $p = .06$, bookmark: $b = -0.03$, $p = .475$), that is caused by human activity (vote : $b = -0.07$, $p = .04$, bookmark: $b = -0.04$, $p = .036$) and that it is a significant threat (vote : $b = -0.06$, $p = .115$, bookmark: $b = -0.02$, $p = .563$). 
+
+For moderate believers [response between 51-75 on the continuous scales], the treatment is not effective; in the belief that climate change is happening (vote : $b = -0.02$, $p = .567$, bookmark: $b = 0.02$, $p = .461$), that is caused by human activity (vote : $b = -0.01$, $p = .713$, bookmark: $b = 0.03$, $p = .313$) and that it is a significant threat (vote : $b = -0.005$, $p = .852$, bookmark: $b = 0.03$, $p = .336$). 
+
+The treatment is the least effective among the most believers [response between 76-100 on the continuous scales] in the belief that climate change is happening (vote : $b = -0.01$, $p = .619$, bookmark: $b = 0.03$, $p = .378$), that is caused by human activity (vote : $b = 0.001$, $p = .960$, bookmark: $b = 0.05$, $p = .168$) and that it is a significant threat (vote : $b = -0.01$, $p = .717$, bookmark: $b = 0.04$, $p = .282$), whereas higher positive beta means higher treatment effect. 
+
+```{r engagement analysis per group, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
+
+####most skeptical audience
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < -24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < -24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < -24,], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < -24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < -24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < -24,], na.action=na.omit)
+summary(model1)
+
+#moderate skeptics
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > -23 & final_df$prior_happen_1 <0,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > -23 & final_df$prior_cause_1 < 0,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > -23 & final_df$prior_risk_1 <0,], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > -23 & final_df$prior_happen_1 <0,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > -23 & final_df$prior_cause_1 <0,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > -23 & final_df$prior_risk_1 <0,], na.action=na.omit)
+summary(model1)
+
+
+
+#moderate believer
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < 25 & final_df$prior_happen_1 > -1,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < 25  & final_df$prior_cause_1 > -1,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < 25  & final_df$prior_risk_1 > -1,], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 < 25  & final_df$prior_happen_1 > -1,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 < 25  & final_df$prior_cause_1 > -1,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 < 25  & final_df$prior_risk_1 > -1,], na.action=na.omit)
+summary(model1)
+
+
+
+
+
+#most extreme believer
+
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > 24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > 24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(bookmarked ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > 24,], na.action=na.omit)
+summary(model1)
+
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_happen_1 > 24, ], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat + (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_cause_1 > 24,], na.action=na.omit)
+summary(model1)
+
+model1=lmer(vote ~ condition_stat+ (1|title)+ (1|prolific), data=final_df[final_df$type=='climate' & final_df$prior_risk_1 > 24,], na.action=na.omit)
+summary(model1)
+
+
+
+
+
+```
 
 ## Replication of Engagement effects with inattention exclusions
 
@@ -505,8 +800,7 @@ We found that the treatment increased skeptics regret over bookmarking climate c
 
 For this, we used Llama3 -70B to rate articles on their sentimentality with the following prompt, taken from Rathje et al (2024): _'How negative or positive is this article on a 1 to 7 scale?  Answer only with a number, with 1  being “very  negative” and 7 being “very  positive.” Here is the article: [Article text]'_
 
-Tables S9-S10 summarize the results. We conducted this analysis using the dichotomous prior and the continuous prior on the belief that climate change is caused by human activity, as we found evidence for decreased regret among skeptics in the treatment condition only in these 2 measures. Indeed, we found evidence that one sentimentality score, as rated by Llama3, included in the regression, treatment condition no longer significantly interact with prior beliefs, while sentimentality does interact with prior beliefs significantly. This supports our suspicion that negativity of the article texts makes skeptics experience negative emotions that make them later regret their choice. Nevertheless, the interpretation of this analysis is speculative and should be treated as such. Importantly, as it can be seen in the analysis of the posterior beliefs or the perceived credibility of the article this increased regret in the modified headline condition does not translate to decreased belief updating nor a decrease in judgments of credibility.
-
+Tables S9-S10 summarize the results. We conducted this analysis using the dichotomous prior and the continuous prior on the belief that climate change is caused by human activity, as we found evidence for decreased regret among skeptics in the treatment condition only in these 2 measures. Indeed, we found evidence that one sentimentality score, as rated by Llama3, included in the regression, treatment condition no longer significantly interact with prior beliefs, while sentimentality is associated with hightened regret, and it also interacts with prior beliefs. This supports our suspicion that negativity of the article texts makes skeptics experience negative emotions that make them later regret their choice. Nevertheless, the interpretation of this analysis is speculative and should be treated as such. Importantly, as it can be seen in the analysis of the posterior beliefs or the perceived credibility of the article this increased regret in the modified headline condition does not translate to decreased belief updating nor a decrease in judgments of  of article content.
 
 ```{r tables for sentimentality, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
 
@@ -535,8 +829,7 @@ df <- df %>%
 
 df <- df %>%
   left_join(text_analysis, by = "item_nr")
-
-
+sum(is.na(df$item_nr))
 
 model1=lmer(scale(bookmark_regret_1) ~ Sentiment*condition_stat*climate_stat + (1|selectedValue), data=df, na.action=na.omit)
 
@@ -600,6 +893,66 @@ First, we tested whether people updated their beliefs about climate change towar
 
 We find no credible evidence that the persuasion effect was affected by the treatment in any of the three measures; climate change is happening; $b = -0.07, p = .095$; climate change is caused by human activity; $b = 0.04, p = .420$; climate change is threat; $b = -0.08, p = .0824$). We also found no credible evidence for the persuasion effect was affected by partisanship for belief that climate change is happening ($b = -0.04, p = 0.098$) and for the belief that climate change is caused by human activity ($b = -0.03, p = .123$), although Democrats updated to a smaller extent about the threat posed by climate change than Republicans ($b = -0.08, p < .001$; Democrats: $t (1146) = -1.81, p < .001$, Mean change = $-1.81 [-2.26, -1.36]$, Republicans: $t (851) = -10, p  < .001,$ Mean Change =$-3.11 [-3.69, -2.53]$). 
 Finally, consistently with the literature, we did find that the most extreme skeptics are harder to persuade on the measures that climate change is caused by human activity (linear relationship: $b = 0.26, p < .001$; quadratic relationship: $b = 0.11, p < .001$) and that climate change is a threat (linear relationship: $b = 0.44, p < .001$; quadratic relationship: $b = 0.20, p < .001$). On the belief that climate change is caused by human activity the relationship between prior and belief change was linearly increasing such that belief change was highest for the most skeptical of audiences ($b = 0.24, p < .001$, and not the quadratic effect, $b = 0.008, p = .636$). 
+
+```{r posterior analysis, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+ttest1=t.test(df$happen_change)
+ttest2=t.test(df$cause_change)
+ttest3=t.test(df$risk_change)
+
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change)~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change)~ I(prior^2) + prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change)~ I(prior^2) +prior + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change) ~ condition_stat + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+df$prior=scale(df$prior_happen_1)
+model1=lmer(scale(happen_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model1)
+
+df$prior=scale(df$prior_cause_1)
+model2=lmer(scale(cause_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model2)
+
+df$prior=scale(df$prior_risk_1)
+model3=lmer(scale(risk_change) ~ scale(Partisanship) + (1|selectedValue), data=df, na.action=na.omit)
+summary(model3)
+
+t.test(df[df$partisan_identity=='Republican',]$risk_change)
+t.test(df[df$partisan_identity=='Democrat',]$risk_change)
+
+
+t.test(df[df$condition=='original',]$prior_cause_1, df[df$condition=='original',]$posterior_cause_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_cause_1, df[df$condition=='personal',]$posterior_cause_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_happen_1, df[df$condition=='original',]$posterior_happen_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_happen_1, df[df$condition=='personal',]$posterior_happen_1, paired=TRUE)
+
+t.test(df[df$condition=='original',]$prior_risk_1, df[df$condition=='original',]$posterior_risk_1, paired=TRUE)
+t.test(df[df$condition=='personal',]$prior_risk_1, df[df$condition=='personal',]$posterior_risk_1, paired=TRUE)
+
+
+
+
+```
 
 
 ## Linguistic analysis on article headlines
@@ -1878,6 +2231,110 @@ tab_model(model4_credible, model4_bookmark,  model4_vote,
           digits = 3,
           show.ngroups = FALSE)
 cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment, interest in science news and all their interactions. DV is either credibility of the article, bookmark regret, regretted upvotes.")
+cat('<div class="page-break"></div>')
+
+htmltools::browsable(style)
+
+```
+
+
+## Robustness check with logistic regression analysis
+
+For robustness check, we also conducted a logistic regression analysis on the engagement results as the the outcome variables were binary. The results were consistent with the linear regression analysis of these measures.
+
+```{r engagement analysis logistic, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+final_df_filtered = final_df %>%
+  filter(type == 'climate')
+
+model1_vote <- glmer(vote ~ climate_stat *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model2_vote <- glmer(vote ~ prior_happen_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model3_vote <- glmer(vote ~ prior_cause_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model4_vote <- glmer(vote ~ prior_risk_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+
+model1_bookmark <- glmer(bookmarked ~ climate_stat *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model2_bookmark <- glmer(bookmarked ~ prior_happen_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model3_bookmark <- glmer(bookmarked ~ prior_cause_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+model4_bookmark <- glmer(bookmarked ~ prior_risk_1 *  condition_stat + (1 | title) + (1 | prolific), data = final_df_filtered, family=binomial(), na.action = na.omit)
+
+
+
+
+
+style <- htmltools::tags$style(HTML("
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  td:nth-child(2) {
+    padding-right: 30px;  /* Add more space between Estimate and Std. Error */
+  }
+"))
+
+pred_labels <- c('Intercept', "Prior",  "Treatment",  "Prior * Treatment")
+cat('<div class="page-break"></div>')
+
+
+tab_model(model1_vote, model1_bookmark,
+          dv.labels = c("Vote", "Bookmark"),  
+          pred.labels = pred_labels,  
+          title = "Table S56. Logistic Regression Results for Categorical Climate Belief",
+          show.ci = FALSE, 
+          show.p = TRUE,
+          show.se = TRUE, 
+          show.re.var = FALSE, 
+          show.icc = FALSE,     
+          digits = 3,
+          show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are categorical prior belief, treatment and their interaction. DV is either bookmark or votes.")
+cat('<div class="page-break"></div>')
+
+
+tab_model(model2_vote, model2_bookmark,
+          dv.labels = c("Vote", "Bookmark"),
+          pred.labels = pred_labels,
+          title = "Table S57. Logistic Regression Results for Prior on Climate Change is Happening",
+          show.ci = FALSE, 
+          show.p = TRUE,
+          show.se = TRUE, 
+          show.re.var = FALSE,  
+          show.icc = FALSE,     
+          digits = 3,
+          show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is happening, treatment and their interaction. DV is either bookmark or votes.")
+cat('<div class="page-break"></div>')
+
+tab_model(model3_vote, model3_bookmark,
+          dv.labels = c("Vote", "Bookmark"),
+          pred.labels = pred_labels,
+          title = "Table S58. Logistic Regression Results for Prior on Climate Change Caused by Humanity",
+          show.ci = FALSE, 
+          show.p = TRUE,
+          show.se = TRUE, 
+          show.re.var = FALSE,  
+          show.icc = FALSE,     
+          digits = 3,
+          show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is caused by human activity, treatment and their interaction. DV is either bookmark or votes.")
+cat('<div class="page-break"></div>')
+
+tab_model(model4_vote, model4_bookmark,
+          dv.labels = c("Vote", "Bookmark"),
+          pred.labels = pred_labels,
+          title = "Table S59. Logistic Regression Results for Prior on Climate Change is a Threat",
+          show.ci = FALSE, 
+          show.p = TRUE,
+          show.se = TRUE, 
+          show.re.var = FALSE,  
+          show.icc = FALSE,     
+          digits = 3,
+          show.ngroups = FALSE)
+cat("Note. All models include random intercepts for titles and subjects; predictors are continuous prior on climate change is a threat, treatment and their interaction. DV is either bookmark or votes.")
 cat('<div class="page-break"></div>')
 
 htmltools::browsable(style)
